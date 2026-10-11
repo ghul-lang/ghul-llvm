@@ -14,25 +14,25 @@
 static int argument_count;
 static char **arguments;
 
-void libghul_arguments_init(int argc, char **argv) {
+void $libghul_arguments_init(int argc, char **argv) {
     /* The program's own name is not one of its arguments. */
     argument_count = argc > 0 ? argc - 1 : 0;
     arguments = argc > 0 ? argv + 1 : argv;
 }
 
-int32_t ghul_host_argument_count(void) {
+int32_t $ghul_host_argument_count(void) {
     return argument_count;
 }
 
 static void *string_from_utf8(const char *bytes, size_t length) {
-    libghul_utf16 text = {0};
+    $libghul_utf16 text = {0};
 
-    libghul_utf8_decode(bytes, length, &text);
+    $libghul_utf8_decode(bytes, length, &text);
 
-    return libghul_utf16_make_string(&text);
+    return $libghul_utf16_make_string(&text);
 }
 
-void *ghul_host_argument(int32_t index) {
+void *$ghul_host_argument(int32_t index) {
     if (index < 0 || index >= argument_count) {
         return string_from_utf8("", 0);
     }
@@ -44,7 +44,7 @@ void *ghul_host_argument(int32_t index) {
 static char **variables;
 static int variable_count;
 
-void libghul_environment_init(char **environ) {
+void $libghul_environment_init(char **environ) {
     int count = 0;
 
     while (environ && environ[count]) {
@@ -54,7 +54,7 @@ void libghul_environment_init(char **environ) {
     variables = malloc(sizeof(char *) * (size_t)(count + 1));
 
     if (!variables) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     for (int i = 0; i < count; i++) {
@@ -66,11 +66,11 @@ void libghul_environment_init(char **environ) {
     }
 }
 
-int32_t ghul_host_environment_count(void) {
+int32_t $ghul_host_environment_count(void) {
     return variable_count;
 }
 
-void *ghul_host_environment_name(int32_t index) {
+void *$ghul_host_environment_name(int32_t index) {
     if (index < 0 || index >= variable_count) {
         return string_from_utf8("", 0);
     }
@@ -80,15 +80,15 @@ void *ghul_host_environment_name(int32_t index) {
     return string_from_utf8(entry, (size_t)(strchr(entry, '=') - entry));
 }
 
-void *ghul_host_environment_lookup(const uint16_t *name, int32_t length) {
+void *$ghul_host_environment_lookup(const uint16_t *name, int32_t length) {
     char *encoded = malloc((size_t)length * 3 + 4);
 
     if (!encoded) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     uint16_t pending = 0;
-    size_t size = libghul_utf8_encode(name, length, encoded, &pending);
+    size_t size = $libghul_utf8_encode(name, length, encoded, &pending);
 
     void *result = NULL;
 
@@ -109,11 +109,11 @@ void *ghul_host_environment_lookup(const uint16_t *name, int32_t length) {
 
 static struct timespec started;
 
-void libghul_clock_init(void) {
+void $libghul_clock_init(void) {
     clock_gettime(CLOCK_MONOTONIC, &started);
 }
 
-double ghul_host_monotonic_milliseconds(void) {
+double $ghul_host_monotonic_milliseconds(void) {
     struct timespec now;
 
     clock_gettime(CLOCK_MONOTONIC, &now);
@@ -122,7 +122,7 @@ double ghul_host_monotonic_milliseconds(void) {
            (double)(now.tv_nsec - started.tv_nsec) / 1000000.0;
 }
 
-int32_t ghul_host_random_u32(void) {
+int32_t $ghul_host_random_u32(void) {
     uint32_t value;
     size_t got = 0;
 
@@ -134,7 +134,7 @@ int32_t ghul_host_random_u32(void) {
                 continue;
             }
 
-            libghul_fail("Unable to read random bytes from the operating system.\n");
+            $libghul_fail("Unable to read random bytes from the operating system.\n");
         }
 
         got += (size_t)result;

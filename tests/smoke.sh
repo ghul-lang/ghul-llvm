@@ -161,7 +161,7 @@ expect_status 1 "reports a missing C runtime" \
 expect_status 2 "rejects an unknown option" "${tool}" --no-such-option "${tests}/hello.ll" -o x
 expect_status 2 "insists on an output" "${tool}" "${tests}/hello.ll"
 
-# libghul: programs that define ghul_entry rather than main, with
+# libghul: programs that define $ghul_entry rather than main, with
 # tests/libghul/support.ll standing in for the rest of a compiled program.
 libghul_tests="${tests}/libghul"
 
@@ -275,7 +275,7 @@ expected_files="$(printf '%s\n' "${scratch}" 2 0 0 0 1 "hello world" 0 replaced 
     0 2 0)"
 check "files are written, read, listed and deleted as .NET does" "${expected_files}" "$(./files)"
 
-check "reports the ABI version" 2 "$("${tool}" --abi-version)"
+check "reports the ABI version" 3 "$("${tool}" --abi-version)"
 
 # ghul-llvm itself needs nothing from the system but the C library.
 needed="$(readelf -d "${tool}" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort | tr '\n' ' ')"

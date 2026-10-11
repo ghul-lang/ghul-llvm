@@ -29,7 +29,7 @@ enum {
 
 static int32_t last_error;
 
-int32_t ghul_host_file_last_error(void) {
+int32_t $ghul_host_file_last_error(void) {
     return last_error;
 }
 
@@ -38,11 +38,11 @@ static char *utf8_path(const uint16_t *chars, int32_t length) {
     char *path = malloc((size_t)length * 3 + 4);
 
     if (!path) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     uint16_t pending = 0;
-    size_t size = libghul_utf8_encode(chars, length, path, &pending);
+    size_t size = $libghul_utf8_encode(chars, length, path, &pending);
     path[size] = 0;
 
     return path;
@@ -64,7 +64,7 @@ static int parent_exists(const char *path) {
     char *parent = malloc(length + 1);
 
     if (!parent) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     memcpy(parent, path, length);
@@ -98,7 +98,7 @@ static int32_t code_for(int error, const char *path) {
     }
 }
 
-void *ghul_host_file_current_directory(void) {
+void *$ghul_host_file_current_directory(void) {
     char buffer[PATH_MAX];
 
     if (!getcwd(buffer, sizeof buffer)) {
@@ -106,13 +106,13 @@ void *ghul_host_file_current_directory(void) {
         buffer[1] = 0;
     }
 
-    libghul_utf16 text = {0};
-    libghul_utf8_decode(buffer, strlen(buffer), &text);
+    $libghul_utf16 text = {0};
+    $libghul_utf8_decode(buffer, strlen(buffer), &text);
 
-    return libghul_utf16_make_string(&text);
+    return $libghul_utf16_make_string(&text);
 }
 
-int32_t ghul_host_file_kind(const uint16_t *chars, int32_t length) {
+int32_t $ghul_host_file_kind(const uint16_t *chars, int32_t length) {
     char *path = utf8_path(chars, length);
     struct stat status;
     int32_t kind = 0;
@@ -125,7 +125,7 @@ int32_t ghul_host_file_kind(const uint16_t *chars, int32_t length) {
     return kind;
 }
 
-void *ghul_host_file_read(const uint16_t *chars, int32_t length) {
+void *$ghul_host_file_read(const uint16_t *chars, int32_t length) {
     char *path = utf8_path(chars, length);
     int fd = open(path, O_RDONLY | O_CLOEXEC);
 
@@ -149,7 +149,7 @@ void *ghul_host_file_read(const uint16_t *chars, int32_t length) {
     uint8_t *bytes = malloc(capacity);
 
     if (!bytes) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     for (;;) {
@@ -158,7 +158,7 @@ void *ghul_host_file_read(const uint16_t *chars, int32_t length) {
             bytes = realloc(bytes, capacity);
 
             if (!bytes) {
-                libghul_fail("Out of memory.\n");
+                $libghul_fail("Out of memory.\n");
             }
         }
 
@@ -192,7 +192,7 @@ void *ghul_host_file_read(const uint16_t *chars, int32_t length) {
         return NULL;
     }
 
-    void *result = ghul_make_bytes(bytes, (int32_t)size);
+    void *result = $ghul_make_bytes(bytes, (int32_t)size);
 
     free(bytes);
     last_error = FILE_OK;
@@ -200,7 +200,7 @@ void *ghul_host_file_read(const uint16_t *chars, int32_t length) {
     return result;
 }
 
-int32_t ghul_host_file_write(const uint16_t *chars, int32_t length, const uint8_t *bytes,
+int32_t $ghul_host_file_write(const uint16_t *chars, int32_t length, const uint8_t *bytes,
                              int32_t count, bool append) {
     char *path = utf8_path(chars, length);
     int flags = O_WRONLY | O_CREAT | O_CLOEXEC | (append ? O_APPEND : O_TRUNC);
@@ -238,7 +238,7 @@ int32_t ghul_host_file_write(const uint16_t *chars, int32_t length, const uint8_
 }
 
 /* A file that is not there is not an error, as .NET's File.Delete has it. */
-int32_t ghul_host_file_delete(const uint16_t *chars, int32_t length) {
+int32_t $ghul_host_file_delete(const uint16_t *chars, int32_t length) {
     char *path = utf8_path(chars, length);
     int32_t code = FILE_OK;
 
@@ -255,7 +255,7 @@ int32_t ghul_host_file_delete(const uint16_t *chars, int32_t length) {
 }
 
 /* Creates every directory along `path` that is not there. */
-int32_t ghul_host_directory_create(const uint16_t *chars, int32_t length) {
+int32_t $ghul_host_directory_create(const uint16_t *chars, int32_t length) {
     if (length == 0) {
         return IO_ERROR;
     }
@@ -309,7 +309,7 @@ static int32_t remove_tree(const char *path) {
         char *child = malloc(base + strlen(entry->d_name) + 2);
 
         if (!child) {
-            libghul_fail("Out of memory.\n");
+            $libghul_fail("Out of memory.\n");
         }
 
         strcpy(child, path);
@@ -341,7 +341,7 @@ static int32_t remove_tree(const char *path) {
  * otherwise only when it is empty. A directory that is not there, or one
  * that is not empty, is an error, as .NET's Directory.Delete has it.
  */
-int32_t ghul_host_directory_delete(const uint16_t *chars, int32_t length, bool recursive) {
+int32_t $ghul_host_directory_delete(const uint16_t *chars, int32_t length, bool recursive) {
     char *path = utf8_path(chars, length);
     int32_t code;
 
@@ -364,7 +364,7 @@ int32_t ghul_host_directory_delete(const uint16_t *chars, int32_t length, bool r
  * already, as .NET's File.Move and Directory.Move have it; a file there is
  * an I/O error rather than being replaced.
  */
-int32_t ghul_host_file_rename(const uint16_t *from_chars, int32_t from_length,
+int32_t $ghul_host_file_rename(const uint16_t *from_chars, int32_t from_length,
                               const uint16_t *to_chars, int32_t to_length) {
     char *from = utf8_path(from_chars, from_length);
     char *to = utf8_path(to_chars, to_length);
@@ -388,7 +388,7 @@ int32_t ghul_host_file_rename(const uint16_t *from_chars, int32_t from_length,
 }
 
 /* Makes `path` the process's current directory. */
-int32_t ghul_host_directory_set_current(const uint16_t *chars, int32_t length) {
+int32_t $ghul_host_directory_set_current(const uint16_t *chars, int32_t length) {
     char *path = utf8_path(chars, length);
     int32_t code = chdir(path) == 0 ? FILE_OK : code_for(errno, path);
 
@@ -411,7 +411,7 @@ static int by_name(const void *a, const void *b) {
  * are, or the negated code of a failure. Names are sorted by their UTF-8
  * bytes, so a listing is the same from one run to the next.
  */
-int32_t ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool directories) {
+int32_t $ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool directories) {
     for (int32_t i = 0; i < entry_count; i++) {
         free(entries[i]);
     }
@@ -441,7 +441,7 @@ int32_t ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool 
         char *child = malloc(base + strlen(entry->d_name) + 2);
 
         if (!child) {
-            libghul_fail("Out of memory.\n");
+            $libghul_fail("Out of memory.\n");
         }
 
         strcpy(child, path);
@@ -462,14 +462,14 @@ int32_t ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool 
             entries = realloc(entries, sizeof(char *) * (size_t)capacity);
 
             if (!entries) {
-                libghul_fail("Out of memory.\n");
+                $libghul_fail("Out of memory.\n");
             }
         }
 
         entries[entry_count] = strdup(entry->d_name);
 
         if (!entries[entry_count]) {
-            libghul_fail("Out of memory.\n");
+            $libghul_fail("Out of memory.\n");
         }
 
         entry_count++;
@@ -483,12 +483,12 @@ int32_t ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool 
     return entry_count;
 }
 
-void *ghul_host_directory_entry(int32_t index) {
-    libghul_utf16 text = {0};
+void *$ghul_host_directory_entry(int32_t index) {
+    $libghul_utf16 text = {0};
 
     if (index >= 0 && index < entry_count) {
-        libghul_utf8_decode(entries[index], strlen(entries[index]), &text);
+        $libghul_utf8_decode(entries[index], strlen(entries[index]), &text);
     }
 
-    return libghul_utf16_make_string(&text);
+    return $libghul_utf16_make_string(&text);
 }

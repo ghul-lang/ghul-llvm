@@ -69,13 +69,23 @@ only target so far.
 
 ## The libghul ABI
 
-**Version 2.** `ghul-llvm --abi-version` prints it, and a program can refer to
-`ghul_abi_2`, which libghul defines, to fail to link against a libghul of any
-other ABI version. Version 2 added exceptions that can be caught (the
-landing-pad contract below, `ghul_caught` and `ghul_personality`); version 1
+**Version 3.** `ghul-llvm --abi-version` prints it, and a program can refer to
+`$ghul_abi_3`, which libghul defines, to fail to link against a libghul of any
+other ABI version. Version 3 put a `$` in front of every name on either side
+of the boundary; version 2 added exceptions that can be caught (the
+landing-pad contract below, `$ghul_caught` and `$ghul_personality`); version 1
 treated every exception as unhandled. A change to anything below that a
 compiled program depends on raises it; adding an operation does not. `libghul/include/ghul.h` has the C
 declarations.
+
+**Names.** Every symbol libghul defines, and every symbol it expects the
+program to export, starts with `$`: `$ghul_alloc`, `$ghul_host_write`,
+`$ghul_entry` and the rest. `$` is an operator character in ghūl, so no ghūl
+identifier can spell one of these names, and a program's own functions keep
+their plain names. LLVM's text IR takes them unquoted, as `@$ghul_alloc`.
+Generated code calls nothing outside the program but `$ghul_*` functions and
+LLVM's own `llvm.*` intrinsics: anything it needs from the C library is a
+`$ghul_` function in libghul.
 
 libghul is ghūl's native support library: entry, allocation, throwing and the
 host operations. It is not the standard library (`ghul-runtime`), which is
@@ -88,29 +98,29 @@ string objects when libghul asks.
 
 | symbol | |
 |---|---|
-| `int32_t ghul_entry(void)` | the program's entry; its result is the exit status. An entry that takes `string[]` is wrapped by one that builds the array through `ghul_host_argument` |
-| `void *ghul_make_string(const uint16_t *chars, int32_t length)` | builds one of the program's strings; the code units are valid only during the call |
-| `void *ghul_make_bytes(const uint8_t *bytes, int32_t length)` | builds one of the program's `ubyte[]` arrays; the bytes are valid only during the call |
-| `void ghul_report_unhandled(void *exception)` | writes `Unhandled exception. <Type>: <message>` and a newline to stream 2 through `ghul_host_write`; needed by a program that throws |
+| `int32_t $ghul_entry(void)` | the program's entry; its result is the exit status. An entry that takes `string[]` is wrapped by one that builds the array through `$ghul_host_argument` |
+| `void *$ghul_make_string(const uint16_t *chars, int32_t length)` | builds one of the program's strings; the code units are valid only during the call |
+| `void *$ghul_make_bytes(const uint8_t *bytes, int32_t length)` | builds one of the program's `ubyte[]` arrays; the bytes are valid only during the call |
+| `void $ghul_report_unhandled(void *exception)` | writes `Unhandled exception. <Type>: <message>` and a newline to stream 2 through `$ghul_host_write`; needed by a program that throws |
 
 ### What libghul provides
 
 - `main`, which starts the collector, keeps the arguments and environment,
-  calls `ghul_entry` and returns its result. Standard output is flushed on
+  calls `$ghul_entry` and returns its result. Standard output is flushed on
   every way out: returning, `exit`, and an unhandled exception.
-- `void *ghul_alloc(const void *descriptor, size_t size)`: `size` bytes,
+- `void *$ghul_alloc(const void *descriptor, size_t size)`: `size` bytes,
   header included, from the collected heap, zeroed, with `descriptor` in the
   first word. The collector scans it for pointers.
-- `void *ghul_alloc_atomic(const void *descriptor, size_t size)`: the same,
+- `void *$ghul_alloc_atomic(const void *descriptor, size_t size)`: the same,
   for an object holding no pointers (strings, arrays of numbers, boxed
   numbers), which the collector does not scan.
-- `_Noreturn void ghul_throw(void *exception)`: throws the exception,
+- `_Noreturn void $ghul_throw(void *exception)`: throws the exception,
   unwinding to the nearest landing pad (below). Where no frame has one, the
-  exception is unhandled: libghul calls `ghul_report_unhandled`, flushes
+  exception is unhandled: libghul calls `$ghul_report_unhandled`, flushes
   output and exits with status 134, as a .NET process does.
-- `void *ghul_caught(void *header)`: the exception a landing pad was entered
+- `void *$ghul_caught(void *header)`: the exception a landing pad was entered
   for.
-- `ghul_personality`: the personality routine, which only the unwinder
+- `$ghul_personality`: the personality routine, which only the unwinder
   calls.
 - One `ghul_host_<name>` function for each operation the core library declares
   with `@intrinsic("host.<name>")`.
@@ -123,7 +133,7 @@ libghul decides only *where* an exception stops, at the nearest landing pad;
 generated code decides whether that landing pad handles it.
 
 - **Personality.** Every function containing a `landingpad` names
-  libghul's personality routine: `define ... personality ptr @ghul_personality`.
+  libghul's personality routine: `define ... personality ptr @$ghul_personality`.
   A function without a landing pad needs none, and must not be `nounwind` if
   an exception can pass through it.
 - **Calls in a protected region** are `invoke`, with the unwind edge going to
@@ -134,19 +144,19 @@ generated code decides whether that landing pad handles it.
   treats the two alike, entering any landing pad for any exception. The
   second value, the selector, carries nothing and is not read.
 - **The exception.** The first value is the unwinder's header;
-  `call ptr @ghul_caught(ptr %header)` answers the exception it carries.
+  `call ptr @$ghul_caught(ptr %header)` answers the exception it carries.
 - **Not handling it.** A landing pad that does not handle the exception (no
   catch type matched, or a finally that has run) throws it on by calling
-  `ghul_throw` with the same exception: with `invoke` to an enclosing landing
+  `$ghul_throw` with the same exception: with `invoke` to an enclosing landing
   pad in the same function, or with `call` to leave the frame. `resume` is
   not used: an exception that `resume` carries past the last frame is ended
   by the unwinder with `abort`, before libghul can report it.
 - **Unhandled.** An exception with no landing pad left is reported through
-  `ghul_report_unhandled` from inside `ghul_throw`, so the frames it was
+  `$ghul_report_unhandled` from inside `$ghul_throw`, so the frames it was
   thrown from are still there; the process then exits with status 134.
 
 ```llvm
-define void @f() personality ptr @ghul_personality {
+define void @f() personality ptr @$ghul_personality {
 entry:
   invoke void @g() to label %done unwind label %catch
 done:
@@ -154,9 +164,9 @@ done:
 catch:
   %landed = landingpad { ptr, i32 } catch ptr null
   %header = extractvalue { ptr, i32 } %landed, 0
-  %exception = call ptr @ghul_caught(ptr %header)
+  %exception = call ptr @$ghul_caught(ptr %header)
   ; test %exception's type; on a match, handle it and carry on, otherwise:
-  call void @ghul_throw(ptr %exception)
+  call void @$ghul_throw(ptr %exception)
   unreachable
 }
 ```
@@ -173,10 +183,10 @@ A host operation's C signature follows from its declaration:
 | `char` | `uint16_t` |
 | `bool` | `bool` |
 | `string` argument | two parameters: `const uint16_t *chars, int32_t length` |
-| `string` result | `void *`, made by `ghul_make_string` |
+| `string` result | `void *`, made by `$ghul_make_string` |
 | `string?` result | the same, or `NULL` when absent |
 | `ubyte[]` argument | two parameters: `const uint8_t *bytes, int32_t length` |
-| `ubyte[]` result | `void *`, made by `ghul_make_bytes`, or `NULL` when absent |
+| `ubyte[]` result | `void *`, made by `$ghul_make_bytes`, or `NULL` when absent |
 | `bigint` argument or result | `void *`: a handle libghul makes and never changes, in the collected heap; a handle the program keeps must be in an object the collector scans |
 
 | operation | C signature | notes |

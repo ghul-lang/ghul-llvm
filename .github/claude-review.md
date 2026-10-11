@@ -46,16 +46,16 @@ and the C runtime. Only `x86_64-unknown-linux-musl` exists so far.
   bug.
 - **The ABI.** A change to what `ghul.h` declares that compiled
   code depends on, without raising `GHUL_ABI_VERSION`, renaming
-  `ghul_abi_<n>` and updating the README's ABI section, is a finding.
+  `$ghul_abi_<n>` and updating the README's ABI section, is a finding.
 - **libghul is ignorant of object layout.** It handles strings only as
-  UTF-16 code units and builds them through `ghul_make_string`; a change that
+  UTF-16 code units and builds them through `$ghul_make_string`; a change that
   reads or writes the program's own objects is a finding.
 - **Unwinding.** An exception crosses every frame between the throw and its
   landing pad, libghul's own included, so its code must keep its
   unwind tables (`build/libghul.sh` compiles with `-funwind-tables`). The
   personality routine reports a handler wherever a landing pad covers the
   call; a change that makes it skip landing pads, or that has generated code
-  continue unwinding with `resume` rather than `ghul_throw`, loses the
+  continue unwinding with `resume` rather than `$ghul_throw`, loses the
   report of an unhandled exception.
 - **bigint semantics.** The `host.bigint_*` operations answer as the Wasm
   target's loader does, which `tests/libghul/bigint.expected` records. A

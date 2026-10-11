@@ -18,7 +18,7 @@ static char bytes[READ_SIZE + MAX_SEQUENCE];
 static size_t byte_count;
 
 /* Code units decoded and not yet taken. */
-static libghul_utf16 decoded;
+static $libghul_utf16 decoded;
 static int32_t taken;
 
 static int at_end;
@@ -47,7 +47,7 @@ static int fill(void) {
     }
 
     /* A prompt written without a newline is seen before the read waits. */
-    libghul_flush_output();
+    $libghul_flush_output();
 
     decoded.length = 0;
     taken = 0;
@@ -63,7 +63,7 @@ static int fill(void) {
             at_end = 1;
 
             /* What is left was cut off by the end of the input. */
-            libghul_utf8_decode(bytes, byte_count, &decoded);
+            $libghul_utf8_decode(bytes, byte_count, &decoded);
             byte_count = 0;
 
             return decoded.length > 0;
@@ -73,7 +73,7 @@ static int fill(void) {
 
         size_t keep = incomplete_tail();
 
-        libghul_utf8_decode(bytes, byte_count - keep, &decoded);
+        $libghul_utf8_decode(bytes, byte_count - keep, &decoded);
 
         for (size_t i = 0; i < keep; i++) {
             bytes[i] = bytes[byte_count - keep + i];
@@ -85,7 +85,7 @@ static int fill(void) {
     return 1;
 }
 
-int32_t ghul_host_stdin_peek(void) {
+int32_t $ghul_host_stdin_peek(void) {
     if (taken == decoded.length && !fill()) {
         return -1;
     }
@@ -93,8 +93,8 @@ int32_t ghul_host_stdin_peek(void) {
     return decoded.chars[taken];
 }
 
-int32_t ghul_host_stdin_read(void) {
-    int32_t unit = ghul_host_stdin_peek();
+int32_t $ghul_host_stdin_read(void) {
+    int32_t unit = $ghul_host_stdin_peek();
 
     if (unit >= 0) {
         taken++;
@@ -103,33 +103,33 @@ int32_t ghul_host_stdin_read(void) {
     return unit;
 }
 
-void *ghul_host_stdin_read_line(void) {
-    libghul_utf16 line = {0};
+void *$ghul_host_stdin_read_line(void) {
+    $libghul_utf16 line = {0};
 
-    int32_t unit = ghul_host_stdin_read();
+    int32_t unit = $ghul_host_stdin_read();
 
     if (unit < 0) {
         return NULL;
     }
 
     while (unit >= 0 && unit != '\n' && unit != '\r') {
-        libghul_utf16_add(&line, (uint16_t)unit);
-        unit = ghul_host_stdin_read();
+        $libghul_utf16_add(&line, (uint16_t)unit);
+        unit = $ghul_host_stdin_read();
     }
 
-    if (unit == '\r' && ghul_host_stdin_peek() == '\n') {
-        ghul_host_stdin_read();
+    if (unit == '\r' && $ghul_host_stdin_peek() == '\n') {
+        $ghul_host_stdin_read();
     }
 
-    return libghul_utf16_make_string(&line);
+    return $libghul_utf16_make_string(&line);
 }
 
-void *ghul_host_stdin_read_to_end(void) {
-    libghul_utf16 rest = {0};
+void *$ghul_host_stdin_read_to_end(void) {
+    $libghul_utf16 rest = {0};
 
-    for (int32_t unit = ghul_host_stdin_read(); unit >= 0; unit = ghul_host_stdin_read()) {
-        libghul_utf16_add(&rest, (uint16_t)unit);
+    for (int32_t unit = $ghul_host_stdin_read(); unit >= 0; unit = $ghul_host_stdin_read()) {
+        $libghul_utf16_add(&rest, (uint16_t)unit);
     }
 
-    return libghul_utf16_make_string(&rest);
+    return $libghul_utf16_make_string(&rest);
 }

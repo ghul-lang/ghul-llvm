@@ -42,7 +42,7 @@ static void write_all(int fd, const char *bytes, size_t length) {
     }
 }
 
-void libghul_flush_output(void) {
+void $libghul_flush_output(void) {
     write_all(1, buffer, buffered);
     buffered = 0;
 }
@@ -52,10 +52,10 @@ static void write_stdout(const uint16_t *chars, int32_t length) {
         int32_t units = length < CHUNK_UNITS ? length : CHUNK_UNITS;
 
         if (buffered + (size_t)units * BYTES_PER_UNIT + 4 > BUFFER_SIZE) {
-            libghul_flush_output();
+            $libghul_flush_output();
         }
 
-        buffered += libghul_utf8_encode(chars, units, buffer + buffered, &pending[1]);
+        buffered += $libghul_utf8_encode(chars, units, buffer + buffered, &pending[1]);
 
         chars += units;
         length -= units;
@@ -65,11 +65,11 @@ static void write_stdout(const uint16_t *chars, int32_t length) {
 static void write_stderr(const uint16_t *chars, int32_t length) {
     char chunk[CHUNK_UNITS * BYTES_PER_UNIT + 4];
 
-    libghul_flush_output();
+    $libghul_flush_output();
 
     while (length > 0) {
         int32_t units = length < CHUNK_UNITS ? length : CHUNK_UNITS;
-        size_t bytes = libghul_utf8_encode(chars, units, chunk, &pending[2]);
+        size_t bytes = $libghul_utf8_encode(chars, units, chunk, &pending[2]);
 
         write_all(2, chunk, bytes);
 
@@ -78,7 +78,7 @@ static void write_stderr(const uint16_t *chars, int32_t length) {
     }
 }
 
-void ghul_host_write(const uint16_t *chars, int32_t length, int32_t stream) {
+void $ghul_host_write(const uint16_t *chars, int32_t length, int32_t stream) {
     if (stream == 2) {
         write_stderr(chars, length);
     } else {
@@ -92,7 +92,7 @@ void ghul_host_write(const uint16_t *chars, int32_t length, int32_t stream) {
         }
 
         if (is_terminal) {
-            libghul_flush_output();
+            $libghul_flush_output();
         }
     }
 }

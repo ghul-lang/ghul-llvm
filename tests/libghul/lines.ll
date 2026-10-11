@@ -3,17 +3,17 @@
 
 declare void @say(ptr, i32)
 declare void @write_string(ptr, i32)
-declare ptr @ghul_host_stdin_read_line()
+declare ptr @$ghul_host_stdin_read_line()
 
 @prefix = private constant [2 x i8] c">\00"
 @newline = private constant [2 x i8] c"\0A\00"
 
-define i32 @ghul_entry() {
+define i32 @$ghul_entry() {
 entry:
   br label %loop
 
 loop:
-  %line = call ptr @ghul_host_stdin_read_line()
+  %line = call ptr @$ghul_host_stdin_read_line()
   %done = icmp eq ptr %line, null
   br i1 %done, label %end, label %echo
 

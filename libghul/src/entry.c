@@ -9,23 +9,23 @@
 
 extern char **environ;
 
-const int32_t ghul_abi_2 = GHUL_ABI_VERSION;
+const int32_t $ghul_abi_3 = GHUL_ABI_VERSION;
 
 int main(int argc, char **argv) {
     GC_INIT();
 
-    libghul_clock_init();
-    libghul_arguments_init(argc, argv);
-    libghul_environment_init(environ);
+    $libghul_clock_init();
+    $libghul_arguments_init(argc, argv);
+    $libghul_environment_init(environ);
 
     /* A program that ends by calling exit still has its output written. */
-    atexit(libghul_flush_output);
+    atexit($libghul_flush_output);
 
-    return ghul_entry();
+    return $ghul_entry();
 }
 
-_Noreturn void libghul_fail(const char *message) {
-    libghul_flush_output();
+_Noreturn void $libghul_fail(const char *message) {
+    $libghul_flush_output();
 
     size_t length = strlen(message);
 
