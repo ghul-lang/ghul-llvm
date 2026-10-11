@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -356,6 +357,43 @@ int32_t ghul_host_directory_delete(const uint16_t *chars, int32_t length, bool r
 
     free(path);
     return code;
+}
+
+/*
+ * Moves the file or directory `from` to `to`. Nothing may be at `to`
+ * already, as .NET's File.Move and Directory.Move have it; a file there is
+ * an I/O error rather than being replaced.
+ */
+int32_t ghul_host_file_rename(const uint16_t *from_chars, int32_t from_length,
+                              const uint16_t *to_chars, int32_t to_length) {
+    char *from = utf8_path(from_chars, from_length);
+    char *to = utf8_path(to_chars, to_length);
+    int32_t code = FILE_OK;
+    struct stat status;
+
+    if (lstat(to, &status) == 0) {
+        code = IO_ERROR;
+    } else if (rename(from, to) != 0) {
+        int error = errno;
+        code = lstat(from, &status) != 0 ? code_for(error, from) : code_for(error, to);
+
+        if (code == FILE_NOT_FOUND && lstat(from, &status) == 0) {
+            code = DIRECTORY_NOT_FOUND;
+        }
+    }
+
+    free(from);
+    free(to);
+    return code;
+}
+
+/* Makes `path` the process's current directory. */
+int32_t ghul_host_directory_set_current(const uint16_t *chars, int32_t length) {
+    char *path = utf8_path(chars, length);
+    int32_t code = chdir(path) == 0 ? FILE_OK : code_for(errno, path);
+
+    free(path);
+    return code == FILE_NOT_FOUND ? DIRECTORY_NOT_FOUND : code;
 }
 
 /* --- Listing ------------------------------------------------------------ */

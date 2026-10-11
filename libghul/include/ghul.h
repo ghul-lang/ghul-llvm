@@ -242,6 +242,13 @@ int32_t ghul_host_file_write(const uint16_t *path, int32_t length, const uint8_t
 /* Deletes the file; one that is not there is not an error. */
 int32_t ghul_host_file_delete(const uint16_t *path, int32_t length);
 
+/* Moves a file or directory; nothing may be at the destination already. */
+int32_t ghul_host_file_rename(const uint16_t *from, int32_t from_length, const uint16_t *to,
+                              int32_t to_length);
+
+/* Makes the directory the process's current directory. */
+int32_t ghul_host_directory_set_current(const uint16_t *path, int32_t length);
+
 /* Creates the directory and every directory on the way to it. */
 int32_t ghul_host_directory_create(const uint16_t *path, int32_t length);
 

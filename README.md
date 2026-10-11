@@ -201,6 +201,8 @@ A host operation's C signature follows from its declaration:
 | `host.file_last_error` | `int32_t (void)` | the code of the last `file_read` |
 | `host.file_write` | `int32_t (path, bytes, bool append)` | replaces the content, or adds to its end |
 | `host.file_delete` | `int32_t (path)` | a file that is not there is not an error |
+| `host.file_rename` | `int32_t (from, to)` | a file or a directory; nothing may be at `to` already |
+| `host.directory_set_current` | `int32_t (path)` | the process's current directory |
 | `host.directory_create` | `int32_t (path)` | with every directory on the way |
 | `host.directory_delete` | `int32_t (path, bool recursive)` | not empty and not recursive, or not there, is an error |
 | `host.directory_entries` | `int32_t (path, bool directories)` | the number of files, or directories, directly in it, or a code negated |

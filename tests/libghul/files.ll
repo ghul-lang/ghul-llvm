@@ -18,6 +18,8 @@ declare i32 @ghul_host_file_last_error()
 declare i32 @ghul_host_file_write(ptr, i32, ptr, i32, i1)
 declare i32 @ghul_host_file_delete(ptr, i32)
 declare i32 @ghul_host_directory_create(ptr, i32)
+declare i32 @ghul_host_file_rename(ptr, i32, ptr, i32)
+declare i32 @ghul_host_directory_set_current(ptr, i32)
 declare i32 @ghul_host_directory_delete(ptr, i32, i1)
 declare i32 @ghul_host_directory_entries(ptr, i32, i1)
 declare ptr @ghul_host_directory_entry(i32)
@@ -118,6 +120,24 @@ define void @test_delete(ptr %path) {
   ret void
 }
 
+define void @test_rename(ptr %from, ptr %to) {
+  %from_buffer = alloca [256 x i16]
+  %from_length = call i32 @test_widen(ptr %from, ptr %from_buffer)
+  %to_buffer = alloca [256 x i16]
+  %to_length = call i32 @test_widen(ptr %to, ptr %to_buffer)
+  %code = call i32 @ghul_host_file_rename(ptr %from_buffer, i32 %from_length, ptr %to_buffer, i32 %to_length)
+  call void @test_show_int(i32 %code)
+  ret void
+}
+
+define void @test_set_current(ptr %path) {
+  %buffer = alloca [256 x i16]
+  %length = call i32 @test_widen(ptr %path, ptr %buffer)
+  %code = call i32 @ghul_host_directory_set_current(ptr %buffer, i32 %length)
+  call void @test_show_int(i32 %code)
+  ret void
+}
+
 define void @test_make_directory(ptr %path) {
   %buffer = alloca [256 x i16]
   %length = call i32 @test_widen(ptr %path, ptr %buffer)
@@ -171,6 +191,9 @@ end:
 @world = private constant [7 x i8] c" world\00"
 @replaced = private constant [9 x i8] c"replaced\00"
 @inner = private constant [6 x i8] c"inner\00"
+@moved = private constant [17 x i8] c"files-test/m.txt\00"
+@moved_directory = private constant [13 x i8] c"files-test/q\00"
+@up = private constant [3 x i8] c"..\00"
 
 define i32 @ghul_entry() {
   %current = call ptr @ghul_host_file_current_directory()
@@ -213,11 +236,29 @@ define i32 @ghul_entry() {
   call void @test_kind(ptr @p)
   call void @test_remove_directory(ptr @p, i1 false)
 
+  ; moving: a file, onto a file that is there, a directory, and from nothing
+  call void @test_write(ptr @a, ptr @hello, i1 false)
+  call void @test_rename(ptr @a, ptr @moved)
+  call void @test_read(ptr @moved)
+  call void @test_write(ptr @a, ptr @hello, i1 false)
+  call void @test_rename(ptr @a, ptr @moved)
+  call void @test_make_directory(ptr @p)
+  call void @test_rename(ptr @p, ptr @moved_directory)
+  call void @test_kind(ptr @moved_directory)
+  call void @test_rename(ptr @missing, ptr @p)
+  call void @test_remove_directory(ptr @moved_directory, i1 false)
+  call void @test_delete(ptr @moved)
+
   ; deleting files: there, not there, and in a directory that is not there
   call void @test_delete(ptr @a)
   call void @test_kind(ptr @a)
   call void @test_delete(ptr @a)
   call void @test_delete(ptr @deep_missing)
+
+  ; the current directory: into the test's own, a missing one, and back
+  call void @test_set_current(ptr @root)
+  call void @test_set_current(ptr @missing)
+  call void @test_set_current(ptr @up)
 
   ret i32 0
 }
