@@ -231,9 +231,9 @@ holds, and `bigint_to_hex` writes the fewest two's complement digits that
 keep the sign. `bigint_hash` is the low 32 bits of
 `value ^ (value >> 32)`, as on Wasm: .NET's own hash changes from one
 process to the next, so nothing else can match it. Division by zero is for
-the core library to check before calling; an argument an operation cannot take, such as a
-double that is not finite or a negative exponent, ends the process as an
-unhandled exception.
+the core library to check before calling; an argument an operation cannot
+take, such as a double that is not finite or a negative exponent, ends the
+process as an unhandled exception.
 
 Files are the real file system, as on .NET. A path argument is a `string`,
 which the core library makes full first. The file operations answer a code:
