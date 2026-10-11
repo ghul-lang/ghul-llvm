@@ -128,6 +128,9 @@ define void @show_hex(ptr %value, i1 %upper) {
 @two_64_plus_1 = private constant [21 x i8] c"18446744073709551617\00"
 @sticky = private constant [21 x i8] c"18446744073709553665\00"
 @huge = private constant [41 x i8] c"-123456789012345678901234567890123456789\00"
+@two_63_less_1 = private constant [20 x i8] c"9223372036854775807\00"
+@two_1024_less_1 = private constant [310 x i8] c"179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137215\00"
+@two_1024 = private constant [310 x i8] c"179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137216\00"
 @one_two_eight = private constant [4 x i8] c"128\00"
 @minus_one_two_eight = private constant [5 x i8] c"-128\00"
 @minus_one = private constant [3 x i8] c"-1\00"
@@ -296,6 +299,16 @@ define i32 @$ghul_entry() {
   call void @show_double(double %dhuge)
   %dneg = call double @$ghul_host_bigint_to_double(ptr %b)
   call void @show_double(double %dneg)
+  %t63 = call ptr @big(ptr @two_63_less_1)
+  %d63 = call double @$ghul_host_bigint_to_double(ptr %t63)
+  call void @show_double(double %d63)
+  %tmax = call ptr @big(ptr @two_1024_less_1)
+  %dmax = call double @$ghul_host_bigint_to_double(ptr %tmax)
+  call void @show_double(double %dmax)
+  %tinf = call ptr @big(ptr @two_1024)
+  %dinf = call double @$ghul_host_bigint_to_double(ptr %tinf)
+  %is_infinite = fcmp oeq double %dinf, 0x7FF0000000000000
+  call void @show_bool(i1 %is_infinite)
 
   ; conversions in
   %from_min_int = call ptr @$ghul_host_bigint_from_int(i32 -2147483648)

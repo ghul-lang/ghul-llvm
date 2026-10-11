@@ -128,32 +128,22 @@ double $ghul_host_bigint_to_double(const void *handle) {
     const mp_int *value = handle;
     int bits = mp_count_bits(value);
 
-    if (bits <= 63) {
+    if (bits <= 53) {
         return (double)mp_get_i64(value);
     }
 
     /*
-     * Rounded to the nearest double, ties to even, as .NET converts: the
-     * top 64 bits of the magnitude, with whether any bit below them is set.
+     * The magnitude truncated to the 53 bits a double holds, as .NET
+     * converts, rather than rounded to the nearest; ldexp answers infinity
+     * from 2^1024 up.
      */
-    mp_int top, below, magnitude;
-    check(mp_init_multi(&top, &below, &magnitude, NULL));
-    check(mp_abs(value, &magnitude));
-    check(mp_div_2d(&magnitude, bits - 64, &top, &below));
+    mp_int top;
+    check(mp_init(&top));
+    check(mp_div_2d(value, bits - 53, &top, NULL));
 
-    uint64_t high = mp_get_mag_u64(&top);
-    int sticky = !mp_iszero(&below);
+    double result = ldexp((double)mp_get_mag_u64(&top), bits - 53);
 
-    mp_clear_multi(&top, &below, &magnitude, NULL);
-
-    uint64_t mantissa = high >> 11;
-    uint64_t rest = high & 0x7FF;
-
-    if (rest > 0x400 || (rest == 0x400 && (sticky || (mantissa & 1)))) {
-        mantissa++;
-    }
-
-    double result = ldexp((double)mantissa, bits - 53);
+    mp_clear(&top);
 
     return mp_isneg(value) ? -result : result;
 }
