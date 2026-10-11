@@ -9,23 +9,23 @@
 
 extern char **environ;
 
-const int32_t ghul_runtime_abi_2 = GHUL_RUNTIME_ABI_VERSION;
+const int32_t ghul_abi_2 = GHUL_ABI_VERSION;
 
 int main(int argc, char **argv) {
     GC_INIT();
 
-    ghulrt_clock_init();
-    ghulrt_arguments_init(argc, argv);
-    ghulrt_environment_init(environ);
+    libghul_clock_init();
+    libghul_arguments_init(argc, argv);
+    libghul_environment_init(environ);
 
     /* A program that ends by calling exit still has its output written. */
-    atexit(ghulrt_flush_output);
+    atexit(libghul_flush_output);
 
     return ghul_entry();
 }
 
-_Noreturn void ghulrt_fail(const char *message) {
-    ghulrt_flush_output();
+_Noreturn void libghul_fail(const char *message) {
+    libghul_flush_output();
 
     size_t length = strlen(message);
 
@@ -40,5 +40,5 @@ _Noreturn void ghulrt_fail(const char *message) {
         length -= (size_t)written;
     }
 
-    _exit(GHULRT_FAILURE_STATUS);
+    _exit(LIBGHUL_FAILURE_STATUS);
 }

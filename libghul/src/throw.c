@@ -33,7 +33,7 @@ _Noreturn void ghul_throw(void *exception) {
     header *raised = GC_MALLOC(sizeof(header));
 
     if (!raised) {
-        ghulrt_fail("Out of memory.\n");
+        libghul_fail("Out of memory.\n");
     }
 
     raised->unwind.exception_class = EXCEPTION_CLASS;
@@ -43,11 +43,11 @@ _Noreturn void ghul_throw(void *exception) {
     _Unwind_RaiseException(&raised->unwind);
 
     /* The raise returns only when no frame will handle the exception. */
-    ghulrt_flush_output();
+    libghul_flush_output();
     ghul_report_unhandled(exception);
-    ghulrt_flush_output();
+    libghul_flush_output();
 
-    _exit(GHULRT_FAILURE_STATUS);
+    _exit(LIBGHUL_FAILURE_STATUS);
 }
 
 void *ghul_caught(void *unwind_header) {

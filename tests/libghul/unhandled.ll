@@ -1,4 +1,4 @@
-; Writes a line, then throws an exception nothing catches. The runtime has
+; Writes a line, then throws an exception nothing catches. libghul has
 ; the program describe it, flushes the line, and exits with status 134.
 
 declare void @say(ptr, i32)

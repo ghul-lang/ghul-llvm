@@ -6,13 +6,13 @@
 
 #define REPLACEMENT 0xFFFD
 
-void ghulrt_utf16_add(ghulrt_utf16 *text, uint16_t unit) {
+void libghul_utf16_add(libghul_utf16 *text, uint16_t unit) {
     if (text->length == text->capacity) {
         int32_t capacity = text->capacity ? text->capacity * 2 : 64;
         uint16_t *chars = realloc(text->chars, (size_t)capacity * sizeof(uint16_t));
 
         if (!chars) {
-            ghulrt_fail("Out of memory.\n");
+            libghul_fail("Out of memory.\n");
         }
 
         text->chars = chars;
@@ -22,7 +22,7 @@ void ghulrt_utf16_add(ghulrt_utf16 *text, uint16_t unit) {
     text->chars[text->length++] = unit;
 }
 
-void *ghulrt_utf16_make_string(ghulrt_utf16 *text) {
+void *libghul_utf16_make_string(libghul_utf16 *text) {
     static const uint16_t empty = 0;
 
     void *string = ghul_make_string(text->chars ? text->chars : &empty, text->length);
@@ -35,17 +35,17 @@ void *ghulrt_utf16_make_string(ghulrt_utf16 *text) {
     return string;
 }
 
-static void add_code_point(ghulrt_utf16 *text, uint32_t code_point) {
+static void add_code_point(libghul_utf16 *text, uint32_t code_point) {
     if (code_point >= 0x10000) {
         code_point -= 0x10000;
-        ghulrt_utf16_add(text, (uint16_t)(0xD800 + (code_point >> 10)));
-        ghulrt_utf16_add(text, (uint16_t)(0xDC00 + (code_point & 0x3FF)));
+        libghul_utf16_add(text, (uint16_t)(0xD800 + (code_point >> 10)));
+        libghul_utf16_add(text, (uint16_t)(0xDC00 + (code_point & 0x3FF)));
     } else {
-        ghulrt_utf16_add(text, (uint16_t)code_point);
+        libghul_utf16_add(text, (uint16_t)code_point);
     }
 }
 
-void ghulrt_utf8_decode(const char *bytes, size_t length, ghulrt_utf16 *text) {
+void libghul_utf8_decode(const char *bytes, size_t length, libghul_utf16 *text) {
     const unsigned char *in = (const unsigned char *)bytes;
     size_t i = 0;
 
@@ -53,7 +53,7 @@ void ghulrt_utf8_decode(const char *bytes, size_t length, ghulrt_utf16 *text) {
         unsigned char lead = in[i];
 
         if (lead < 0x80) {
-            ghulrt_utf16_add(text, lead);
+            libghul_utf16_add(text, lead);
             i++;
             continue;
         }
@@ -130,7 +130,7 @@ static size_t put(char *out, uint32_t code_point) {
     return 4;
 }
 
-size_t ghulrt_utf8_encode(const uint16_t *chars, int32_t length, char *out, uint16_t *pending) {
+size_t libghul_utf8_encode(const uint16_t *chars, int32_t length, char *out, uint16_t *pending) {
     size_t written = 0;
 
     for (int32_t i = 0; i < length; i++) {

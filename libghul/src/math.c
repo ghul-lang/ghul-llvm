@@ -1,6 +1,6 @@
 /* The floating-point functions the core library does not compute itself. */
 
-#include "ghulrt.h"
+#include "ghul.h"
 
 #include <math.h>
 
