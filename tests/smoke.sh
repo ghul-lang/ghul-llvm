@@ -173,7 +173,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files; do
+for program in output process process-path spawn spawn-missing lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -199,6 +199,15 @@ check "arguments, environment names and a lookup reach the program" \
     "$(printf 'na\303\257ve \342\230\203\n\ntwo\nA\nGHUL_TEST\nh\303\251llo')" \
     "$(env -i A=b GHUL_TEST=héllo ./process "naïve ☃" "" two)"
 check "a variable that is not set looks up as absent" "unset" "$(env -i ./process)"
+
+status=0
+spawned="$(./spawn)" || status=$?
+check "a spawned command's output and error are captured" "$(printf 'out\nerr')" "${spawned}"
+check "a spawned command's status is answered" 4 "${status}"
+
+status=0
+./spawn-missing || status=$?
+check "a program that is not there is not found" 1 "${status}"
 
 check "the process path is the executable, and the wall clock is set" \
     "$(printf '%s\nnow' "$(readlink -f ./process-path)")" \
