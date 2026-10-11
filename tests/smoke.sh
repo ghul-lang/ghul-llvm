@@ -298,6 +298,9 @@ expected_files="$(printf '%s\n' "${scratch}" 2 0 0 0 1 "hello world" 0 replaced 
 check "files are written, read, listed and deleted as .NET does" "${expected_files}" "$(./files)"
 
 check "reports the ABI version" 3 "$("${tool}" --abi-version)"
+check "requirements.json declares the ABI the tool reports" \
+    "$("${tool}" --abi-version)" \
+    "$(sed -n 's/.*"abi": *\([0-9]*\).*/\1/p' "${root}/requirements.json")"
 
 # ghul-llvm itself needs nothing from the system but the C library.
 needed="$(readelf -d "${tool}" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort | tr '\n' ' ')"
