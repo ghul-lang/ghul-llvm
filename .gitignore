@@ -1,0 +1,6 @@
+# Downloaded sources, the LLVM build and the sysroot: see build/README.md
+.cache/
+
+# Build output and release archives
+out/
+dist/
