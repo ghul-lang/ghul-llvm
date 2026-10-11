@@ -13,6 +13,7 @@ RUN apt-get update \
         file \
         g++ \
         make \
+        xz-utils \
         ninja-build \
         libzstd-dev \
         zlib1g-dev \

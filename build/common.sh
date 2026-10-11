@@ -15,10 +15,11 @@ downloads="${cache}/downloads"
 work="${cache}/build"
 
 # LLVM's release, unpacked down to the headers and static libraries, and the
-# C runtime and collector executables are linked against. Each is named for what it came
-# from, so a version change never reuses an old one.
+# C runtime, collector and unwinder executables are linked against. Each is
+# named for what it came from, the sysroot by a hash of the scripts that pin
+# and build it, so a change to either never reuses an old one.
 llvm_prefix="${cache}/${LLVM_RELEASE}"
-sysroot="${cache}/sysroot-${TRIPLE}-musl-${MUSL_VERSION}-llvm-${LLVM_VERSION}-gc-${BDWGC_VERSION}"
+sysroot="${cache}/sysroot-${TRIPLE}-$(cat "${root}/build/versions.sh" "${root}/build/sysroot.sh" | sha256sum | cut -c1-12)"
 
 # musl, installed with its headers and the musl-gcc wrapper that compiles C
 # against it: the runtime and the collector are built with it.

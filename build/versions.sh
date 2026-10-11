@@ -14,6 +14,11 @@ LLVM_RELEASE=LLVM-${LLVM_VERSION}-Linux-X64
 LLVM_SHA256=14d2f701eb68fb799001bdea6231048f3990690fa2f406d563555ff8f744daba
 LLVM_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_RELEASE}.tar.zst
 
+# LLVM's source release, of which only libunwind is built here: the unwinder
+# ghūl exceptions are thrown through, linked into every executable.
+LLVM_SOURCE_SHA256=c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
+LLVM_SOURCE_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/llvm-project-${LLVM_VERSION}.src.tar.xz
+
 # The builtins in that release that are linked into every executable.
 LLVM_BUILTINS=lib/clang/${LLVM_VERSION%%.*}/lib/x86_64-unknown-linux-gnu/libclang_rt.builtins.a
 
