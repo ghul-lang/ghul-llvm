@@ -16,7 +16,8 @@ ghul-llvm [options] program.ll -L <library dir> -l<library> -o program
 3. Generates an object for the target.
 4. Links it with LLD, statically, against the libraries it is given and
    what ships with the tool: libghul (`libghul.a`), ghūl's native support
-   library; the Boehm garbage collector (`libgc.a`); LLVM's unwinder
+   library; libtommath (`libtommath.a`) for large bigints; the Boehm garbage
+   collector (`libgc.a`); LLVM's unwinder
    (`libunwind.a`); musl's start files and C library; and LLVM's compiler-rt
    builtins. Nothing is read from the system it runs on.
 
@@ -58,7 +59,7 @@ The archive unpacks to a single directory:
 ```
 ghul-llvm-x86_64-unknown-linux-musl/
   bin/ghul-llvm
-  lib/x86_64-unknown-linux-musl/   libghul.a libgc.a libunwind.a crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
+  lib/x86_64-unknown-linux-musl/   libghul.a libtommath.a libgc.a libunwind.a crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
   licenses/
 ```
 
@@ -73,7 +74,7 @@ only target so far.
 other ABI version. Version 2 added exceptions that can be caught (the
 landing-pad contract below, `ghul_caught` and `ghul_personality`); version 1
 treated every exception as unhandled. A change to anything below that a
-compiled program depends on raises it. `libghul/include/ghul.h` has the C
+compiled program depends on raises it; adding an operation does not. `libghul/include/ghul.h` has the C
 declarations.
 
 libghul is ghūl's native support library: entry, allocation, throwing and the
@@ -173,6 +174,7 @@ A host operation's C signature follows from its declaration:
 | `string` argument | two parameters: `const uint16_t *chars, int32_t length` |
 | `string` result | `void *`, made by `ghul_make_string` |
 | `string?` result | the same, or `NULL` when absent |
+| `bigint` argument or result | `void *`: a handle libghul makes and never changes, in the collected heap; a handle the program keeps must be in an object the collector scans |
 
 | operation | C signature | notes |
 |---|---|---|
@@ -194,8 +196,21 @@ A host operation's C signature follows from its declaration:
 Input is decoded from UTF-8 and output encoded to it; a byte sequence that is
 not UTF-8, or an unpaired surrogate, becomes U+FFFD.
 
-Not yet provided: `host.input_file_*`, `host.file_written` and `host.bigint_*`.
-A program that uses them fails to link.
+Every `host.bigint_*` operation the core library declares is provided, over
+libtommath, with the semantics of .NET's `BigInteger` as the Wasm target
+gives them: division truncates, a remainder takes the dividend's sign, shifts
+are arithmetic and a negative count shifts the other way, the bitwise
+operations act on two's complement, `bigint_to_long` keeps the low 64 bits,
+`bigint_to_double` rounds to nearest, and `bigint_to_hex` writes the fewest
+two's complement digits that keep the sign. `bigint_hash` is the low 32 bits
+of `value ^ (value >> 32)`, as on Wasm: .NET's own hash changes from one
+process to the next, so nothing else can match it. Division by zero is for
+the core library to check before calling; an argument an operation cannot
+take, such as a double that is not finite or a negative exponent, ends the
+process as an unhandled exception.
+
+Not yet provided: `host.input_file_*` and `host.file_written`. A program that
+uses them fails to link.
 
 ## Building
 
@@ -206,11 +221,12 @@ a network connection:
 build/all.sh
 ```
 
-That fetches LLVM's own release build for the pinned version (prebuilt
-static libraries for LLVM and LLD; nothing from LLVM is compiled here), builds
-musl and the collector, builds `ghul-llvm` and libghul into `out/`, packs the release archive into `dist/`
-and runs `tests/smoke.sh` against it. The first run downloads about 1.1GB;
-everything is cached under `.cache/`, and a later run takes under a minute.
+That fetches LLVM's own release build for the pinned version (prebuilt static
+libraries for LLVM and LLD, which are not compiled here), builds musl, the
+collector, libunwind and libtommath, builds `ghul-llvm` and libghul into
+`out/`, packs the release archive into `dist/` and runs `tests/smoke.sh`
+against it. The first run downloads about 1.3GB; everything is cached under
+`.cache/`, and a later run takes under a minute.
 
 The pieces can be run on their own, inside the build environment:
 
@@ -222,14 +238,14 @@ build/docker.sh build/package.sh   # the release archive, into dist/
 tests/smoke.sh                     # checks the build in out/
 ```
 
-The versions of LLVM, musl and the collector, and their checksums, are pinned
-in `build/versions.sh`. `GHUL_LLVM_CACHE` moves the cache, so several
+The versions of LLVM, musl, the collector and libtommath, and their checksums,
+are pinned in `build/versions.sh`. `GHUL_LLVM_CACHE` moves the cache, so several
 checkouts can share one copy of LLVM's release.
 
 ## Licence
 
 ghul-llvm and libghul are MIT licensed. The release archive also carries
 LLVM and LLD (Apache 2.0 with LLVM exceptions), musl (MIT), the Boehm
-collector (MIT-style), zlib and zstd; their licences are in its `licenses/`
-directory. Of those, only musl, the collector, libunwind and the compiler-rt builtins
-are linked into the programs ghul-llvm builds.
+collector (MIT-style), libtommath (public domain), zlib and zstd; their licences are in its `licenses/`
+directory. Of those, only musl, the collector, libunwind, libtommath and the compiler-rt
+builtins are linked into the programs ghul-llvm builds.

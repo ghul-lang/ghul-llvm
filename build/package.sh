@@ -36,6 +36,7 @@ cp "${root}/LICENSE" "${staging}/licenses/ghul-llvm-LICENSE"
 cp "${root}/licenses/LLVM-LICENSE.TXT" "${staging}/licenses/LLVM-LICENSE.TXT"
 cp "${sysroot}/musl-COPYRIGHT" "${staging}/licenses/musl-COPYRIGHT"
 cp "${sysroot}/bdwgc-README.QUICK" "${staging}/licenses/bdwgc-README.QUICK"
+cp "${sysroot}/libtommath-LICENSE" "${staging}/licenses/libtommath-LICENSE"
 cp /usr/share/doc/libzstd-dev/copyright "${staging}/licenses/zstd-copyright"
 cp /usr/share/doc/zlib1g-dev/copyright "${staging}/licenses/zlib-copyright"
 

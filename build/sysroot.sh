@@ -3,8 +3,8 @@
 # itself: musl's start files and static C library, LLVM's
 # compiler-rt builtins for the helper routines code generation can call
 # (128-bit division, for instance), the Boehm garbage collector, built
-# single-threaded against musl, and LLVM's libunwind, which exceptions are
-# thrown through. This is what ships in the release archive's
+# single-threaded against musl, LLVM's libunwind, which exceptions are
+# thrown through, and libtommath, which large bigints are computed with. This is what ships in the release archive's
 # lib/<triple> directory beside libghul.a.
 #
 # Does nothing when the sysroot is already there.
@@ -113,9 +113,36 @@ done
 mkdir -p "${sysroot}/include"
 
 ar rcsD "${sysroot}/libunwind.a" "${unwind_objects[@]}"
+
+# libtommath, compiled directly. Its allocator is libghul's, which takes the
+# digits from the collector: a bigint's digits are then freed with it, and
+# libghul needs no finaliser.
+tommath_archive="$(fetch "${LIBTOMMATH_URL}" "${LIBTOMMATH_SHA256}")"
+tommath_build="${work}/libtommath-${LIBTOMMATH_VERSION}"
+
+rm -rf "${tommath_build}"
+mkdir -p "${tommath_build}"
+tar -xJf "${tommath_archive}" -C "${tommath_build}" --strip-components=1
+
+tommath_objects=()
+
+for source in "${tommath_build}"/bn_*.c; do
+    object="${source%.c}.o"
+    "${musl_prefix}/bin/musl-gcc" -O2 -fno-pie -funwind-tables -ffunction-sections -fdata-sections \
+        -DMP_MALLOC=libghul_mp_malloc \
+        -DMP_REALLOC=libghul_mp_realloc \
+        -DMP_CALLOC=libghul_mp_calloc \
+        -DMP_FREE=libghul_mp_free \
+        -I "${tommath_build}" -c "${source}" -o "${object}"
+    tommath_objects+=("${object}")
+done
+
+ar rcsD "${sysroot}/libtommath.a" "${tommath_objects[@]}"
 cp "${unwind_source}/include/unwind.h" "${unwind_source}/include/__libunwind_config.h" "${sysroot}/include/"
 cp "${unwind_source}/include/"unwind_*.h "${sysroot}/include/"
-rm -rf "${unwind_build}"
+cp "${tommath_build}/tommath.h" "${sysroot}/include/"
+cp "${tommath_build}/LICENSE" "${sysroot}/libtommath-LICENSE"
+rm -rf "${unwind_build}" "${tommath_build}"
 
 for file in crt1.o crti.o crtn.o libc.a; do
     cp "${musl_prefix}/lib/${file}" "${sysroot}/${file}"

@@ -162,4 +162,47 @@ double ghul_host_math_log10(double value);
 double ghul_host_math_log2(double value);
 double ghul_host_math_pow(double x, double y);
 
+/*
+ * bigint, with .NET's BigInteger semantics: division truncates, a remainder
+ * takes the dividend's sign, shifts are arithmetic and a negative count
+ * shifts the other way, and the bitwise operations act on two's complement.
+ * A bigint crosses as a handle: a pointer into the collected heap that
+ * libghul makes and never changes, kept alive by whatever refers to it. A
+ * handle the program keeps must be in an object the collector scans.
+ *
+ * Division by zero is the caller's to check: the core library throws before
+ * calling. An argument these cannot take (a double that is not finite, a
+ * negative exponent, a zero modulus, text that is not a whole number) ends
+ * the process as an unhandled exception.
+ */
+void *ghul_host_bigint_from_int(int32_t value);
+void *ghul_host_bigint_from_long(int64_t value);
+void *ghul_host_bigint_from_ulong(uint64_t value);
+void *ghul_host_bigint_from_double(double value);
+int64_t ghul_host_bigint_to_long(const void *value);
+double ghul_host_bigint_to_double(const void *value);
+void *ghul_host_bigint_add(const void *a, const void *b);
+void *ghul_host_bigint_subtract(const void *a, const void *b);
+void *ghul_host_bigint_multiply(const void *a, const void *b);
+void *ghul_host_bigint_divide(const void *a, const void *b);
+void *ghul_host_bigint_remainder(const void *a, const void *b);
+void *ghul_host_bigint_negate(const void *a);
+void *ghul_host_bigint_not(const void *a);
+void *ghul_host_bigint_and(const void *a, const void *b);
+void *ghul_host_bigint_or(const void *a, const void *b);
+void *ghul_host_bigint_xor(const void *a, const void *b);
+void *ghul_host_bigint_shift_left(const void *a, int32_t places);
+void *ghul_host_bigint_shift_right(const void *a, int32_t places);
+void *ghul_host_bigint_pow(const void *value, int32_t exponent);
+void *ghul_host_bigint_mod_pow(const void *value, const void *exponent, const void *modulus);
+void *ghul_host_bigint_gcd(const void *a, const void *b);
+int32_t ghul_host_bigint_compare(const void *a, const void *b);
+bool ghul_host_bigint_equals(const void *a, const void *b);
+int32_t ghul_host_bigint_hash(const void *value);
+int32_t ghul_host_bigint_bit_length(const void *value);
+bool ghul_host_bigint_is_integer_text(const uint16_t *chars, int32_t length);
+void *ghul_host_bigint_parse(const uint16_t *chars, int32_t length);
+void *ghul_host_bigint_to_string(const void *value);
+void *ghul_host_bigint_to_hex(const void *value, bool upper);
+
 #endif

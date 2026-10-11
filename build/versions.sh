@@ -29,6 +29,13 @@ MUSL_VERSION=1.2.6
 MUSL_SHA256=d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a
 MUSL_URL=https://musl.libc.org/releases/musl-${MUSL_VERSION}.tar.gz
 
+# The arbitrary-precision arithmetic libghul's bigint operations use, built
+# against musl with its digits allocated from the collector, and shipped as
+# libtommath.a.
+LIBTOMMATH_VERSION=1.3.0
+LIBTOMMATH_SHA256=296272d93435991308eb73607600c034b558807a07e829e751142e65ccfa9d08
+LIBTOMMATH_URL=https://github.com/libtom/libtommath/releases/download/v${LIBTOMMATH_VERSION}/ltm-${LIBTOMMATH_VERSION}.tar.xz
+
 # The garbage collector libghul allocates from, built single-threaded
 # against musl and shipped as libgc.a.
 BDWGC_VERSION=8.2.12
