@@ -1,24 +1,24 @@
 /*
  * The interface between a ghūl program compiled for the LLVM target and the
- * native runtime it is linked with (libghulrt.a). README.md describes it in
+ * native support library it is linked with (libghul.a). README.md describes it in
  * full; this header is the authority on the C signatures.
  *
  * Two directions:
  *
  * - The program defines ghul_entry, ghul_make_string and
- *   ghul_report_unhandled, which the runtime calls.
- * - The runtime defines main, ghul_alloc, ghul_alloc_atomic, ghul_throw,
+ *   ghul_report_unhandled, which libghul calls.
+ * - libghul defines main, ghul_alloc, ghul_alloc_atomic, ghul_throw,
  *   ghul_caught, ghul_personality and one ghul_host_<operation> function per
  *   host operation the core library declares with
  *   @intrinsic("host.<operation>").
  *
  * A string crosses the boundary as a pointer to its UTF-16 code units and a
- * count of them, never as the program's own string object, so the runtime
+ * count of them, never as the program's own string object, so libghul
  * does not depend on how the program lays strings out.
  */
 
-#ifndef GHULRT_H
-#define GHULRT_H
+#ifndef GHUL_H
+#define GHUL_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -28,27 +28,27 @@
  * The ABI version. A change to anything in this header that a compiled
  * program depends on raises it.
  */
-#define GHUL_RUNTIME_ABI_VERSION 2
+#define GHUL_ABI_VERSION 2
 
 /*
- * Defined by the runtime, so a program can refer to it and fail to link
- * against a runtime of another ABI version rather than fail when it runs.
+ * Defined by libghul, so a program can refer to it and fail to link
+ * against a libghul of another ABI version rather than fail when it runs.
  * Version 2 added exceptions that a landing pad can catch.
  */
-extern const int32_t ghul_runtime_abi_2;
+extern const int32_t ghul_abi_2;
 
 /* --- Defined by the program -------------------------------------------- */
 
 /*
- * The program's entry point. Its result is the process's exit status. The
- * runtime has initialised the collector and kept the command-line arguments
+ * The program's entry point. Its result is the process's exit status.
+ * libghul has initialised the collector and kept the command-line arguments
  * before calling it.
  */
 int32_t ghul_entry(void);
 
 /*
- * Builds one of the program's strings from `length` UTF-16 code units. The
- * runtime calls it for every host operation that answers a string. The code
+ * Builds one of the program's strings from `length` UTF-16 code units.
+ * libghul calls it for every host operation that answers a string. The code
  * units are only valid for the duration of the call, so it copies them.
  */
 void *ghul_make_string(const uint16_t *chars, int32_t length);
@@ -56,8 +56,8 @@ void *ghul_make_string(const uint16_t *chars, int32_t length);
 /*
  * Writes the first line .NET prints for an exception nothing caught,
  * "Unhandled exception. <Type>: <message>" and a newline, through
- * ghul_host_write to stream 2. The runtime calls it before ending the
- * process, so the runtime needs to know nothing of how an exception or its
+ * ghul_host_write to stream 2. libghul calls it before ending the
+ * process, so libghul needs to know nothing of how an exception or its
  * message is laid out. A program that never throws need not define it.
  */
 void ghul_report_unhandled(void *exception);

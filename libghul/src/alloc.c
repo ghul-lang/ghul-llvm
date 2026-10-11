@@ -7,7 +7,7 @@
 
 static void *finish(void *object, const void *descriptor, size_t size) {
     if (!object) {
-        ghulrt_fail("Out of memory.\n");
+        libghul_fail("Out of memory.\n");
     }
 
     if (size >= sizeof(void *)) {

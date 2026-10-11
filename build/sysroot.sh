@@ -1,11 +1,11 @@
 #!/bin/bash
-# Builds what every executable is linked against apart from the ghūl
-# runtime itself: musl's start files and static C library, LLVM's
+# Builds what every executable is linked against apart from libghul
+# itself: musl's start files and static C library, LLVM's
 # compiler-rt builtins for the helper routines code generation can call
 # (128-bit division, for instance), the Boehm garbage collector, built
 # single-threaded against musl, and LLVM's libunwind, which exceptions are
 # thrown through. This is what ships in the release archive's
-# lib/<triple> directory beside libghulrt.a.
+# lib/<triple> directory beside libghul.a.
 #
 # Does nothing when the sysroot is already there.
 
@@ -22,7 +22,7 @@ llvm_release
 
 # musl's own build, with the system C compiler: no shared library, since
 # every executable is linked statically. It stays installed, because
-# musl-gcc and the headers are what the collector and the runtime are
+# musl-gcc and the headers are what the collector and libghul are
 # compiled with.
 if [ ! -f "${musl_prefix}/.complete" ]; then
     archive="$(fetch "${MUSL_URL}" "${MUSL_SHA256}")"

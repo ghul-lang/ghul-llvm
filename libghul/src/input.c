@@ -18,7 +18,7 @@ static char bytes[READ_SIZE + MAX_SEQUENCE];
 static size_t byte_count;
 
 /* Code units decoded and not yet taken. */
-static ghulrt_utf16 decoded;
+static libghul_utf16 decoded;
 static int32_t taken;
 
 static int at_end;
@@ -47,7 +47,7 @@ static int fill(void) {
     }
 
     /* A prompt written without a newline is seen before the read waits. */
-    ghulrt_flush_output();
+    libghul_flush_output();
 
     decoded.length = 0;
     taken = 0;
@@ -63,7 +63,7 @@ static int fill(void) {
             at_end = 1;
 
             /* What is left was cut off by the end of the input. */
-            ghulrt_utf8_decode(bytes, byte_count, &decoded);
+            libghul_utf8_decode(bytes, byte_count, &decoded);
             byte_count = 0;
 
             return decoded.length > 0;
@@ -73,7 +73,7 @@ static int fill(void) {
 
         size_t keep = incomplete_tail();
 
-        ghulrt_utf8_decode(bytes, byte_count - keep, &decoded);
+        libghul_utf8_decode(bytes, byte_count - keep, &decoded);
 
         for (size_t i = 0; i < keep; i++) {
             bytes[i] = bytes[byte_count - keep + i];
@@ -104,7 +104,7 @@ int32_t ghul_host_stdin_read(void) {
 }
 
 void *ghul_host_stdin_read_line(void) {
-    ghulrt_utf16 line = {0};
+    libghul_utf16 line = {0};
 
     int32_t unit = ghul_host_stdin_read();
 
@@ -113,7 +113,7 @@ void *ghul_host_stdin_read_line(void) {
     }
 
     while (unit >= 0 && unit != '\n' && unit != '\r') {
-        ghulrt_utf16_add(&line, (uint16_t)unit);
+        libghul_utf16_add(&line, (uint16_t)unit);
         unit = ghul_host_stdin_read();
     }
 
@@ -121,15 +121,15 @@ void *ghul_host_stdin_read_line(void) {
         ghul_host_stdin_read();
     }
 
-    return ghulrt_utf16_make_string(&line);
+    return libghul_utf16_make_string(&line);
 }
 
 void *ghul_host_stdin_read_to_end(void) {
-    ghulrt_utf16 rest = {0};
+    libghul_utf16 rest = {0};
 
     for (int32_t unit = ghul_host_stdin_read(); unit >= 0; unit = ghul_host_stdin_read()) {
-        ghulrt_utf16_add(&rest, (uint16_t)unit);
+        libghul_utf16_add(&rest, (uint16_t)unit);
     }
 
-    return ghulrt_utf16_make_string(&rest);
+    return libghul_utf16_make_string(&rest);
 }

@@ -1,4 +1,4 @@
-; What the runtime tests share, standing in for what a compiled ghūl program
+; What libghul tests share, standing in for what a compiled ghūl program
 ; provides: ghul_make_string over a string laid out as a descriptor, a
 ; length and the UTF-16 code units, and helpers for writing text.
 

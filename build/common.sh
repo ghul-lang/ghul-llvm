@@ -22,7 +22,7 @@ llvm_prefix="${cache}/${LLVM_RELEASE}"
 sysroot="${cache}/sysroot-${TRIPLE}-$(cat "${root}/build/versions.sh" "${root}/build/sysroot.sh" | sha256sum | cut -c1-12)"
 
 # musl, installed with its headers and the musl-gcc wrapper that compiles C
-# against it: the runtime and the collector are built with it.
+# against it: libghul and the collector are built with it.
 musl_prefix="${cache}/musl-${MUSL_VERSION}"
 
 out="${root}/out"

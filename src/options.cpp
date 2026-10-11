@@ -10,8 +10,8 @@
 #define GHUL_LLVM_VERSION "0.0.0-local"
 #endif
 
-#ifndef GHUL_RUNTIME_ABI_VERSION
-#error "GHUL_RUNTIME_ABI_VERSION must be defined by the build"
+#ifndef GHUL_ABI_VERSION
+#error "GHUL_ABI_VERSION must be defined by the build"
 #endif
 
 #define GHUL_STRINGIFY_(x) #x
@@ -49,7 +49,7 @@ constexpr const char *usage_text =
     "                        beside the directory ghul-llvm is in)\n"
     "  -v, --verbose         print the linker command line\n"
     "  --version             print the version and exit\n"
-    "  --runtime-abi-version print the version of the ghul runtime ABI and exit\n"
+    "  --abi-version         print the version of the libghul ABI and exit\n"
     "  --help                print this and exit\n";
 
 int usage_error(const std::string &message) {
@@ -111,13 +111,13 @@ Parsed parse_options(int argc, char **argv) {
 
         if (arg == "--version") {
             llvm::outs() << "ghul-llvm " GHUL_LLVM_VERSION " (LLVM " LLVM_VERSION_STRING
-                            ", " GHUL_LLVM_TRIPLE ", runtime ABI " GHUL_STRINGIFY(
-                                GHUL_RUNTIME_ABI_VERSION) ")\n";
+                            ", " GHUL_LLVM_TRIPLE ", libghul ABI " GHUL_STRINGIFY(
+                                GHUL_ABI_VERSION) ")\n";
             return parsed;
         }
 
-        if (arg == "--runtime-abi-version") {
-            llvm::outs() << GHUL_RUNTIME_ABI_VERSION << "\n";
+        if (arg == "--abi-version") {
+            llvm::outs() << GHUL_ABI_VERSION << "\n";
             return parsed;
         }
 

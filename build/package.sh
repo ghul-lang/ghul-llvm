@@ -27,7 +27,7 @@ mkdir -p "${staging}/bin" "${staging}/lib/${TRIPLE}" "${staging}/licenses"
 cp "${out}/bin/ghul-llvm" "${staging}/bin/"
 cp "${out}/lib/${TRIPLE}"/* "${staging}/lib/${TRIPLE}/"
 
-# ghul-llvm and its runtime, LLVM and LLD (in the tool, and compiler-rt in
+# ghul-llvm and libghul, LLVM and LLD (in the tool, and compiler-rt in
 # every program it builds), musl and the collector (in every program), and
 # the compression libraries
 # linked into the tool. The C++ runtime is GCC's, under the runtime library

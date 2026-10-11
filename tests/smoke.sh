@@ -116,7 +116,7 @@ expect_status 0 "emits an object" "${tool}" --emit=obj "${tests}/hello.ll" -o he
 file hello.o | grep -q 'relocatable' && pass "the object is relocatable" || fail "hello.o is not an object"
 
 # Code built separately reaches a program as an object named on the command
-# line, or as an archive found through -L and -l, as a runtime library will.
+# line, or as an archive found through -L and -l, as a library will.
 expect_status 0 "builds a separate object" "${tool}" --emit=obj "${tests}/answer.ll" -o answer.o
 expect_status 0 "links a separate object" "${tool}" "${tests}/caller.ll" answer.o -o with-object
 expect_status 42 "the program calls into the object" ./with-object
@@ -161,16 +161,16 @@ expect_status 1 "reports a missing C runtime" \
 expect_status 2 "rejects an unknown option" "${tool}" --no-such-option "${tests}/hello.ll" -o x
 expect_status 2 "insists on an output" "${tool}" "${tests}/hello.ll"
 
-# The ghūl runtime: programs that define ghul_entry rather than main, with
-# tests/runtime/support.ll standing in for the rest of a compiled program.
-runtime="${tests}/runtime"
+# libghul: programs that define ghul_entry rather than main, with
+# tests/libghul/support.ll standing in for the rest of a compiled program.
+libghul_tests="${tests}/libghul"
 
-expect_status 0 "builds the runtime tests' support object" \
-    "${tool}" --emit=obj "${runtime}/support.ll" -o support.o
+expect_status 0 "builds the libghul tests' support object" \
+    "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
 for program in output process lines characters collector scalars unhandled exit exceptions escaped; do
-    expect_status 0 "links ${program} with the runtime" \
-        "${tool}" "${runtime}/${program}.ll" support.o -o "${program}"
+    expect_status 0 "links ${program} with libghul" \
+        "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
 
 # check <description> <expected> <actual>
@@ -234,7 +234,7 @@ check "leaving through exit flushes output" "written, no end." "$(cat exit.out)"
 expected_catches="$(printf 'caught red\nfinally (normal)\nfinally (unwinding)\ninner saw it\nouter caught blue')"
 
 expect_status 0 "links the exception test unoptimised" \
-    "${tool}" -O0 "${runtime}/exceptions.ll" support.o -o exceptions-O0
+    "${tool}" -O0 "${libghul_tests}/exceptions.ll" support.o -o exceptions-O0
 
 for build in exceptions exceptions-O0; do
     status=0
@@ -249,7 +249,7 @@ check "an exception that passes every landing pad is unhandled, with 134" 134 "$
 check "the landing pads it passed ran first" "$(printf 'catch: pass\nfinally')" "$(cat escaped.out)"
 check "and it is reported" "Unhandled exception. Test.Escaped: got out" "$(cat escaped.err)"
 
-check "reports the runtime ABI version" 2 "$("${tool}" --runtime-abi-version)"
+check "reports the ABI version" 2 "$("${tool}" --abi-version)"
 
 # ghul-llvm itself needs nothing from the system but the C library.
 needed="$(readelf -d "${tool}" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort | tr '\n' ' ')"

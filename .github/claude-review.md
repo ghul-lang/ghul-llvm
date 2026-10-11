@@ -16,11 +16,11 @@ the new pass manager, generates an object, and links that with LLD — used as
 a library, in the same process — statically against musl and compiler-rt
 builtins that ship beside it. The result is a statically linked executable.
 
-The repository also holds the ghūl runtime (`runtime/`), C linked into every
+The repository also holds libghul (`libghul/`), C linked into every
 program: `main`, allocation from the Boehm collector, throwing and catching
 through LLVM's libunwind with a personality routine of its own, and the host
 operations the core library declares. Its interface to compiled code is the
-versioned ABI in `runtime/include/ghulrt.h` and README.md.
+versioned ABI in `libghul/include/ghul.h` and README.md.
 
 The tool is C++ over LLVM's own prebuilt release libraries: nothing from LLVM is
 compiled here. The release is one archive per target triple, holding the tool
@@ -44,15 +44,15 @@ and the C runtime. Only `x86_64-unknown-linux-musl` exists so far.
   for a usage error. The compiler distinguishes them, so a change that
   reports a bad input as a usage error, or crashes instead of reporting, is a
   bug.
-- **The runtime ABI.** A change to what `ghulrt.h` declares that compiled
-  code depends on, without raising `GHUL_RUNTIME_ABI_VERSION`, renaming
-  `ghul_runtime_abi_<n>` and updating the README's ABI section, is a finding.
-- **The runtime is ignorant of object layout.** It handles strings only as
+- **The ABI.** A change to what `ghul.h` declares that compiled
+  code depends on, without raising `GHUL_ABI_VERSION`, renaming
+  `ghul_abi_<n>` and updating the README's ABI section, is a finding.
+- **libghul is ignorant of object layout.** It handles strings only as
   UTF-16 code units and builds them through `ghul_make_string`; a change that
   reads or writes the program's own objects is a finding.
 - **Unwinding.** An exception crosses every frame between the throw and its
-  landing pad, the runtime's own included, so runtime code must keep its
-  unwind tables (`build/runtime.sh` compiles with `-funwind-tables`). The
+  landing pad, libghul's own included, so its code must keep its
+  unwind tables (`build/libghul.sh` compiles with `-funwind-tables`). The
   personality routine reports a handler wherever a landing pad covers the
   call; a change that makes it skip landing pads, or that has generated code
   continue unwinding with `resume` rather than `ghul_throw`, loses the
