@@ -168,7 +168,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn; do
+for program in output process lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -253,6 +253,12 @@ check "and it is reported" "Unhandled exception. Test.Escaped: got out" "$(cat e
 # the same operations.
 check "bigint operations answer as the Wasm target's do" \
     "$(cat "${libghul_tests}/bigint.expected")" "$(./bigint)"
+
+status=0
+./bigint-negative-exponent 2>negative-exponent.err || status=$?
+check "mod_pow refuses a negative exponent, as .NET does" \
+    "134 Unhandled exception. Ghul.ArgumentOutOfRangeException: The exponent must not be negative." \
+    "${status} $(cat negative-exponent.err)"
 
 # A gigabyte of bigints under half that limit: the digits are collected.
 status=0

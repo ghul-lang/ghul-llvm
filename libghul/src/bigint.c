@@ -211,10 +211,14 @@ void *ghul_host_bigint_pow(const void *value, int32_t exponent) {
 
 /*
  * Square and multiply with truncating remainders, so a negative value gives
- * a result of its sign, as .NET's ModPow does. A negative exponent leaves
- * the loop at once.
+ * a result of its sign, as .NET's ModPow does.
  */
 void *ghul_host_bigint_mod_pow(const void *value, const void *exponent, const void *modulus) {
+    if (mp_isneg((const mp_int *)exponent)) {
+        libghul_fail("Unhandled exception. Ghul.ArgumentOutOfRangeException: "
+                     "The exponent must not be negative.\n");
+    }
+
     if (mp_iszero((const mp_int *)modulus)) {
         libghul_fail("Unhandled exception. Ghul.DivideByZeroException: "
                      "Attempted to divide by zero.\n");
