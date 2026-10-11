@@ -63,6 +63,11 @@ dependency on something only it has.
   and nothing in it may be built without them. `tests/libghul/exceptions.ll`
   is built at both `-O0` and `-O2`, because what the unwinder sees depends on
   the code it unwinds through.
+- **bigint answers.** `tests/libghul/bigint.expected` holds what the Wasm
+  target's loader answers for the operations `bigint.ll` runs, computed with
+  JavaScript's `BigInt` using the loader's own definitions in
+  `ghul/src/ir/wasmgc/loader.mjs`. A difference is a bug in libghul, unless
+  the loader changed first.
 - **Raising the glibc requirement.** The build runs on Ubuntu 22.04 so that
   `ghul-llvm` needs no newer glibc than LLVM's release does. Building on a
   newer distribution raises it silently; the smoke test prints the version

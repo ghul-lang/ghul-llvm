@@ -57,6 +57,10 @@ and the C runtime. Only `x86_64-unknown-linux-musl` exists so far.
   call; a change that makes it skip landing pads, or that has generated code
   continue unwinding with `resume` rather than `ghul_throw`, loses the
   report of an unhandled exception.
+- **bigint semantics.** The `host.bigint_*` operations answer as the Wasm
+  target's loader does, which `tests/libghul/bigint.expected` records. A
+  change to an answer there is a change of semantics between targets, not a
+  test update.
 - **The glibc requirement.** The build runs on Ubuntu 22.04 deliberately; a
   change to `build/Dockerfile` that moves to a newer distribution raises the
   glibc version the tool needs.
