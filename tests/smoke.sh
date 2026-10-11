@@ -168,7 +168,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent; do
+for program in output process lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -264,6 +264,16 @@ check "mod_pow refuses a negative exponent, as .NET does" \
 status=0
 (ulimit -v 524288 && ./bigint-churn) || status=$?
 check "bigint digits are collected" 0 "${status}"
+
+# Files and directories on the real file system, in a directory of the
+# test's own. Codes: 0 done, 1 no file, 2 no directory, 3 denied, 4 I/O.
+mkdir files-test
+expected_files="$(printf '%s\n' "${scratch}" 2 0 0 0 1 "hello world" 0 replaced null 1 null 2 2 null 3 \
+    0 2 0 4 0 1 a.txt 1 p -2 4 0 0 2 \
+    0 0 hello 0 4 0 0 2 1 0 0 \
+    0 0 0 2 \
+    0 2 0)"
+check "files are written, read, listed and deleted as .NET does" "${expected_files}" "$(./files)"
 
 check "reports the ABI version" 2 "$("${tool}" --abi-version)"
 

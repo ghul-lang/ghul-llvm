@@ -5,7 +5,7 @@
  *
  * Two directions:
  *
- * - The program defines ghul_entry, ghul_make_string and
+ * - The program defines ghul_entry, ghul_make_string, ghul_make_bytes and
  *   ghul_report_unhandled, which libghul calls.
  * - libghul defines main, ghul_alloc, ghul_alloc_atomic, ghul_throw,
  *   ghul_caught, ghul_personality and one ghul_host_<operation> function per
@@ -52,6 +52,14 @@ int32_t ghul_entry(void);
  * units are only valid for the duration of the call, so it copies them.
  */
 void *ghul_make_string(const uint16_t *chars, int32_t length);
+
+/*
+ * Builds one of the program's ubyte[] arrays from `length` bytes, for every
+ * host operation that answers one. The bytes are only valid for the
+ * duration of the call, so it copies them. A ubyte[] argument crosses the
+ * other way as two parameters: `const uint8_t *bytes, int32_t length`.
+ */
+void *ghul_make_bytes(const uint8_t *bytes, int32_t length);
 
 /*
  * Writes the first line .NET prints for an exception nothing caught,
@@ -204,5 +212,56 @@ bool ghul_host_bigint_is_integer_text(const uint16_t *chars, int32_t length);
 void *ghul_host_bigint_parse(const uint16_t *chars, int32_t length);
 void *ghul_host_bigint_to_string(const void *value);
 void *ghul_host_bigint_to_hex(const void *value, bool upper);
+
+/*
+ * Files and directories on the real file system. Paths are as the program
+ * gives them; the core library makes them full first. An operation that can
+ * fail answers one of these codes, and file_read, which answers the bytes,
+ * leaves its code for file_last_error:
+ *
+ *   0 done, 1 the file is not there, 2 a directory on the way is not there,
+ *   3 access is denied, 4 any other I/O error
+ *
+ * from which the core library throws FileNotFoundException,
+ * DirectoryNotFoundException, UnauthorizedAccessException or IOException,
+ * as .NET does.
+ */
+void *ghul_host_file_current_directory(void);
+
+/* 0 for nothing there, 1 for a file, 2 for a directory. */
+int32_t ghul_host_file_kind(const uint16_t *path, int32_t length);
+
+/* The whole of the file, or NULL with the reason in file_last_error. */
+void *ghul_host_file_read(const uint16_t *path, int32_t length);
+int32_t ghul_host_file_last_error(void);
+
+/* Replaces the file's content with `bytes`, or adds them to its end. */
+int32_t ghul_host_file_write(const uint16_t *path, int32_t length, const uint8_t *bytes,
+                             int32_t count, bool append);
+
+/* Deletes the file; one that is not there is not an error. */
+int32_t ghul_host_file_delete(const uint16_t *path, int32_t length);
+
+/* Moves a file or directory; nothing may be at the destination already. */
+int32_t ghul_host_file_rename(const uint16_t *from, int32_t from_length, const uint16_t *to,
+                              int32_t to_length);
+
+/* Makes the directory the process's current directory. */
+int32_t ghul_host_directory_set_current(const uint16_t *path, int32_t length);
+
+/* Creates the directory and every directory on the way to it. */
+int32_t ghul_host_directory_create(const uint16_t *path, int32_t length);
+
+/* Deletes the directory: with what is in it, or only when it is empty. */
+int32_t ghul_host_directory_delete(const uint16_t *path, int32_t length, bool recursive);
+
+/*
+ * Lists the files, or the directories, directly in the directory, answering
+ * how many, or a code negated. Each name, without the directory, is then
+ * answered by directory_entry. Names are sorted, so a listing is the same
+ * from one run to the next.
+ */
+int32_t ghul_host_directory_entries(const uint16_t *path, int32_t length, bool directories);
+void *ghul_host_directory_entry(int32_t index);
 
 #endif
