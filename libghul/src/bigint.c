@@ -97,6 +97,28 @@ void *ghul_host_bigint_from_double(double value) {
     return result;
 }
 
+/* Whether the value fits in an i64, so the program can hold it there. */
+bool ghul_host_bigint_fits_long(const void *handle) {
+    const mp_int *value = handle;
+    int bits = mp_count_bits(value);
+
+    if (bits < 64) {
+        return true;
+    }
+
+    /* The one 64-bit magnitude that fits: the lowest long, -2^63. */
+    if (bits == 64 && mp_isneg(value)) {
+        mp_int lowest;
+        check(mp_init(&lowest));
+        mp_set_i64(&lowest, INT64_MIN);
+        bool fits = mp_cmp(value, &lowest) == MP_EQ;
+        mp_clear(&lowest);
+        return fits;
+    }
+
+    return false;
+}
+
 int64_t ghul_host_bigint_to_long(const void *value) {
     /* The low 64 bits of the two's complement, as a cast wraps. */
     return mp_get_i64(value);
