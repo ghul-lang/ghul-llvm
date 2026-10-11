@@ -147,6 +147,15 @@ void *$ghul_host_stdin_read_to_end(void);
 /* Milliseconds since the program started, from a clock that never goes back. */
 double $ghul_host_monotonic_milliseconds(void);
 
+/* Milliseconds since 1970-01-01T00:00:00Z, from the system clock. */
+double $ghul_host_wall_clock_milliseconds(void);
+
+/* Ends the process with `code` as its status, after flushing standard output. */
+_Noreturn void $ghul_host_exit(int32_t code);
+
+/* The path of the running executable, or NULL where it cannot be read. */
+void *$ghul_host_process_path(void);
+
 /* 32 random bits from the operating system. */
 int32_t $ghul_host_random_u32(void);
 

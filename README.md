@@ -202,6 +202,9 @@ A host operation's C signature follows from its declaration:
 | `host.stdin_read_line` | `void *(void)` | without its ending (`\n`, `\r\n` or `\r`); `NULL` at the end |
 | `host.stdin_read_to_end` | `void *(void)` | everything left, possibly empty |
 | `host.monotonic_milliseconds` | `double (void)` | since the program started |
+| `host.wall_clock_milliseconds` | `double (void)` | since 1970-01-01T00:00:00Z |
+| `host.exit` | `void (int32_t)` | ends the process with that status, after flushing standard output |
+| `host.process_path` | `void *(void)` | the running executable, from `/proc/self/exe`; `NULL` where it cannot be read |
 | `host.random_u32` | `int32_t (void)` | 32 random bits |
 | `host.math_<f>` | `double (double)` | `sqrt`, `cbrt`, `floor`, `ceiling`, `truncate`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `exp`, `log`, `log10`, `log2` |
 | `host.math_atan2`, `host.math_pow` | `double (double, double)` | |
