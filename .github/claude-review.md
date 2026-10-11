@@ -17,7 +17,8 @@ a library, in the same process — statically against musl and compiler-rt
 builtins that ship beside it. The result is a statically linked executable.
 
 The repository also holds the ghūl runtime (`runtime/`), C linked into every
-program: `main`, allocation from the Boehm collector, throwing, and the host
+program: `main`, allocation from the Boehm collector, throwing and catching
+through LLVM's libunwind with a personality routine of its own, and the host
 operations the core library declares. Its interface to compiled code is the
 versioned ABI in `runtime/include/ghulrt.h` and README.md.
 
@@ -49,6 +50,13 @@ and the C runtime. Only `x86_64-unknown-linux-musl` exists so far.
 - **The runtime is ignorant of object layout.** It handles strings only as
   UTF-16 code units and builds them through `ghul_make_string`; a change that
   reads or writes the program's own objects is a finding.
+- **Unwinding.** An exception crosses every frame between the throw and its
+  landing pad, the runtime's own included, so runtime code must keep its
+  unwind tables (`build/runtime.sh` compiles with `-funwind-tables`). The
+  personality routine reports a handler wherever a landing pad covers the
+  call; a change that makes it skip landing pads, or that has generated code
+  continue unwinding with `resume` rather than `ghul_throw`, loses the
+  report of an unhandled exception.
 - **The glibc requirement.** The build runs on Ubuntu 22.04 deliberately; a
   change to `build/Dockerfile` that moves to a newer distribution raises the
   glibc version the tool needs.

@@ -9,7 +9,7 @@
 
 extern char **environ;
 
-const int32_t ghul_runtime_abi_1 = GHUL_RUNTIME_ABI_VERSION;
+const int32_t ghul_runtime_abi_2 = GHUL_RUNTIME_ABI_VERSION;
 
 int main(int argc, char **argv) {
     GC_INIT();

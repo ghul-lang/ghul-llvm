@@ -7,9 +7,10 @@
  *
  * - The program defines ghul_entry, ghul_make_string and
  *   ghul_report_unhandled, which the runtime calls.
- * - The runtime defines main, ghul_alloc, ghul_alloc_atomic, ghul_throw and
- *   one ghul_host_<operation> function per host operation the core library
- *   declares with @intrinsic("host.<operation>").
+ * - The runtime defines main, ghul_alloc, ghul_alloc_atomic, ghul_throw,
+ *   ghul_caught, ghul_personality and one ghul_host_<operation> function per
+ *   host operation the core library declares with
+ *   @intrinsic("host.<operation>").
  *
  * A string crosses the boundary as a pointer to its UTF-16 code units and a
  * count of them, never as the program's own string object, so the runtime
@@ -27,13 +28,14 @@
  * The ABI version. A change to anything in this header that a compiled
  * program depends on raises it.
  */
-#define GHUL_RUNTIME_ABI_VERSION 1
+#define GHUL_RUNTIME_ABI_VERSION 2
 
 /*
  * Defined by the runtime, so a program can refer to it and fail to link
  * against a runtime of another ABI version rather than fail when it runs.
+ * Version 2 added exceptions that a landing pad can catch.
  */
-extern const int32_t ghul_runtime_abi_1;
+extern const int32_t ghul_runtime_abi_2;
 
 /* --- Defined by the program -------------------------------------------- */
 
@@ -79,12 +81,25 @@ void *ghul_alloc_atomic(const void *descriptor, size_t size);
 /* --- Exceptions --------------------------------------------------------- */
 
 /*
- * Throws `exception`. Until the runtime can unwind to a handler, every
- * exception is unhandled: it is reported through ghul_report_unhandled,
- * output is flushed, and the process exits with status 134, as a .NET
- * process does.
+ * Throws `exception`, unwinding to the nearest landing pad for a call it is
+ * thrown through. A landing pad that does not handle the exception throws it
+ * again with ghul_throw. Where there is no landing pad left, the exception
+ * is unhandled: it is reported through ghul_report_unhandled, output is
+ * flushed, and the process exits with status 134, as a .NET process does.
  */
 _Noreturn void ghul_throw(void *exception);
+
+/*
+ * The exception a landing pad was entered for, from the first value of its
+ * landingpad instruction.
+ */
+void *ghul_caught(void *unwind_header);
+
+/*
+ * ghul_personality is the personality routine every function with a landing
+ * pad names. Only the unwinder calls it, with the signature unwind.h gives
+ * a personality routine, so it is not declared here.
+ */
 
 /* --- Host operations ----------------------------------------------------- */
 

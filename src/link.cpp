@@ -60,7 +60,7 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
     std::string sysroot = options.sysroot ? *options.sysroot : default_sysroot(argv0);
 
     const char *runtime[] = {"crt1.o",  "crti.o", "crtn.o",
-                             "libghulrt.a", "libgc.a", "libc.a",
+                             "libghulrt.a", "libgc.a", "libunwind.a", "libc.a",
                              "libclang_rt.builtins.a"};
 
     for (const char *file : runtime) {
@@ -115,7 +115,7 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
 
     // The order is the one a C compiler driver gives a static link: start
     // files, the program, its libraries, then the ghūl runtime, the
-    // collector, the C library and the builtins, grouped so that each can
+    // collector, the unwinder, the C library and the builtins, grouped so that each can
     // use the others, and the closing start file. An archive member is only
     // taken when something refers to it, so a program that defines its own
     // main takes nothing from the ghūl runtime.
@@ -124,6 +124,8 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
         "ld.lld",
         "-static",
         "--gc-sections",
+        // The unwinder finds a function's unwind table through this index.
+        "--eh-frame-hdr",
         "-z", "noexecstack",
         "-o", options.output,
         in_sysroot("crt1.o"),
@@ -147,6 +149,7 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
 
     args.push_back(in_sysroot("libghulrt.a"));
     args.push_back(in_sysroot("libgc.a"));
+    args.push_back(in_sysroot("libunwind.a"));
     args.push_back(in_sysroot("libc.a"));
     args.push_back(in_sysroot("libclang_rt.builtins.a"));
     args.push_back("--end-group");

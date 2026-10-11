@@ -14,7 +14,8 @@ rm -rf "${build}"
 mkdir -p "${build}" "${target}"
 
 # Code generation for a fixed load address, as ghul-llvm generates the
-# program's own code, so the two link into one static executable.
+# program's own code, so the two link into one static executable, and with
+# unwind tables, so an exception can be thrown through the runtime's frames.
 flags=(
     -std=c11
     -D_GNU_SOURCE
@@ -25,6 +26,7 @@ flags=(
     -fno-pie
     -ffunction-sections
     -fdata-sections
+    -funwind-tables
     -I "${root}/runtime/include"
     -I "${sysroot}/include"
 )

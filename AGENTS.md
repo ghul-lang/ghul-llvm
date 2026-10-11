@@ -57,6 +57,11 @@ dependency on something only it has.
   depends on is the contract with the compiler's LLVM backend. A change to it
   raises `GHUL_RUNTIME_ABI_VERSION`, renames `ghul_runtime_abi_<n>` to match,
   and updates the README's ABI section in the same change.
+- **Unwind tables.** An exception unwinds through the runtime's frames as
+  well as the program's, so the runtime is compiled with `-funwind-tables`
+  and nothing in it may be built without them. `tests/runtime/exceptions.ll`
+  is built at both `-O0` and `-O2`, because what the unwinder sees depends on
+  the code it unwinds through.
 - **Raising the glibc requirement.** The build runs on Ubuntu 22.04 so that
   `ghul-llvm` needs no newer glibc than LLVM's release does. Building on a
   newer distribution raises it silently; the smoke test prints the version

@@ -168,7 +168,7 @@ runtime="${tests}/runtime"
 expect_status 0 "builds the runtime tests' support object" \
     "${tool}" --emit=obj "${runtime}/support.ll" -o support.o
 
-for program in output process lines characters collector scalars unhandled exit; do
+for program in output process lines characters collector scalars unhandled exit exceptions escaped; do
     expect_status 0 "links ${program} with the runtime" \
         "${tool}" "${runtime}/${program}.ll" support.o -o "${program}"
 done
@@ -229,7 +229,27 @@ status=0
 check "leaving through exit keeps its status" 5 "${status}"
 check "leaving through exit flushes output" "written, no end." "$(cat exit.out)"
 
-check "reports the runtime ABI version" 1 "$("${tool}" --runtime-abi-version)"
+# Exceptions thrown through landing pads, unoptimised and optimised: what
+# the unwinder does depends on the code it unwinds through.
+expected_catches="$(printf 'caught red\nfinally (normal)\nfinally (unwinding)\ninner saw it\nouter caught blue')"
+
+expect_status 0 "links the exception test unoptimised" \
+    "${tool}" -O0 "${runtime}/exceptions.ll" support.o -o exceptions-O0
+
+for build in exceptions exceptions-O0; do
+    status=0
+    output="$(./${build} 2>&1)" || status=$?
+    check "${build}: catch, finally and nested regions see the exception in order" \
+        "0 ${expected_catches}" "${status} ${output}"
+done
+
+status=0
+./escaped >escaped.out 2>escaped.err || status=$?
+check "an exception that passes every landing pad is unhandled, with 134" 134 "${status}"
+check "the landing pads it passed ran first" "$(printf 'catch: pass\nfinally')" "$(cat escaped.out)"
+check "and it is reported" "Unhandled exception. Test.Escaped: got out" "$(cat escaped.err)"
+
+check "reports the runtime ABI version" 2 "$("${tool}" --runtime-abi-version)"
 
 # ghul-llvm itself needs nothing from the system but the C library.
 needed="$(readelf -d "${tool}" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort | tr '\n' ' ')"
