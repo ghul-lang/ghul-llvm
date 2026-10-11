@@ -90,6 +90,7 @@ string objects when libghul asks.
 |---|---|
 | `int32_t ghul_entry(void)` | the program's entry; its result is the exit status. An entry that takes `string[]` is wrapped by one that builds the array through `ghul_host_argument` |
 | `void *ghul_make_string(const uint16_t *chars, int32_t length)` | builds one of the program's strings; the code units are valid only during the call |
+| `void *ghul_make_bytes(const uint8_t *bytes, int32_t length)` | builds one of the program's `ubyte[]` arrays; the bytes are valid only during the call |
 | `void ghul_report_unhandled(void *exception)` | writes `Unhandled exception. <Type>: <message>` and a newline to stream 2 through `ghul_host_write`; needed by a program that throws |
 
 ### What libghul provides
@@ -174,6 +175,8 @@ A host operation's C signature follows from its declaration:
 | `string` argument | two parameters: `const uint16_t *chars, int32_t length` |
 | `string` result | `void *`, made by `ghul_make_string` |
 | `string?` result | the same, or `NULL` when absent |
+| `ubyte[]` argument | two parameters: `const uint8_t *bytes, int32_t length` |
+| `ubyte[]` result | `void *`, made by `ghul_make_bytes`, or `NULL` when absent |
 | `bigint` argument or result | `void *`: a handle libghul makes and never changes, in the collected heap; a handle the program keeps must be in an object the collector scans |
 
 | operation | C signature | notes |
@@ -192,6 +195,16 @@ A host operation's C signature follows from its declaration:
 | `host.random_u32` | `int32_t (void)` | 32 random bits |
 | `host.math_<f>` | `double (double)` | `sqrt`, `cbrt`, `floor`, `ceiling`, `truncate`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `exp`, `log`, `log10`, `log2` |
 | `host.math_atan2`, `host.math_pow` | `double (double, double)` | |
+| `host.file_current_directory` | `void *(void)` | |
+| `host.file_kind` | `int32_t (path)` | 0 nothing there, 1 a file, 2 a directory |
+| `host.file_read` | `void *(path)` | the whole file as `ubyte[]`, or `NULL` with the reason in `file_last_error` |
+| `host.file_last_error` | `int32_t (void)` | the code of the last `file_read` |
+| `host.file_write` | `int32_t (path, bytes, bool append)` | replaces the content, or adds to its end |
+| `host.file_delete` | `int32_t (path)` | a file that is not there is not an error |
+| `host.directory_create` | `int32_t (path)` | with every directory on the way |
+| `host.directory_delete` | `int32_t (path, bool recursive)` | not empty and not recursive, or not there, is an error |
+| `host.directory_entries` | `int32_t (path, bool directories)` | the number of files, or directories, directly in it, or a code negated |
+| `host.directory_entry` | `void *(int32_t)` | each name from the last listing, sorted |
 
 Input is decoded from UTF-8 and output encoded to it; a byte sequence that is
 not UTF-8, or an unpaired surrogate, becomes U+FFFD.
@@ -209,8 +222,15 @@ the core library to check before calling; an argument an operation cannot
 take, such as a double that is not finite or a negative exponent, ends the
 process as an unhandled exception.
 
-Not yet provided: `host.input_file_*` and `host.file_written`. A program that
-uses them fails to link.
+Files are the real file system, as on .NET. A path argument is a `string`,
+which the core library makes full first. The file operations answer a code:
+0 done, 1 the file is not there, 2 a directory on the way is not there, 3
+access is denied, 4 any other I/O error; the core library throws
+`FileNotFoundException`, `DirectoryNotFoundException`,
+`UnauthorizedAccessException` or `IOException` for them, as .NET does.
+
+`host.input_file_*` and `host.file_written` belong to the Wasm target's file
+system, which is held in memory, and are not provided here.
 
 ## Building
 

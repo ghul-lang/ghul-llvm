@@ -92,3 +92,47 @@ end:
 different:
   ret i1 false
 }
+
+; A ubyte[] laid out as a descriptor, a length and the bytes, standing in
+; for the program's own arrays.
+%bytes = type { ptr, i32, [0 x i8] }
+
+@bytes_descriptor = constant i8 0
+
+define ptr @ghul_make_bytes(ptr %data, i32 %length) {
+  %count = sext i32 %length to i64
+  %size = add i64 %count, 12
+  %array = call ptr @ghul_alloc_atomic(ptr @bytes_descriptor, i64 %size)
+  %length_field = getelementptr %bytes, ptr %array, i32 0, i32 1
+  store i32 %length, ptr %length_field
+  %data_field = getelementptr %bytes, ptr %array, i32 0, i32 2
+  call void @llvm.memcpy.p0.p0.i64(ptr %data_field, ptr %data, i64 %count, i1 false)
+  ret ptr %array
+}
+
+; Writes an array built by ghul_make_bytes, whose bytes are ASCII, to stream 1.
+define void @write_bytes(ptr %array) {
+entry:
+  %length_field = getelementptr %bytes, ptr %array, i32 0, i32 1
+  %length = load i32, ptr %length_field
+  %wide = alloca [256 x i16]
+  br label %loop
+
+loop:
+  %i = phi i32 [ 0, %entry ], [ %next, %copy ]
+  %done = icmp eq i32 %i, %length
+  br i1 %done, label %write, label %copy
+
+copy:
+  %byte_at = getelementptr %bytes, ptr %array, i32 0, i32 2, i32 %i
+  %byte = load i8, ptr %byte_at
+  %unit = zext i8 %byte to i16
+  %unit_at = getelementptr [256 x i16], ptr %wide, i32 0, i32 %i
+  store i16 %unit, ptr %unit_at
+  %next = add i32 %i, 1
+  br label %loop
+
+write:
+  call void @ghul_host_write(ptr %wide, i32 %length, i32 1)
+  ret void
+}
