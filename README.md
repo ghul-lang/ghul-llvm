@@ -33,7 +33,7 @@ same architecture.
 | `--passes=<pipeline>` | a new pass manager pipeline to run instead of the default, such as `function(mem2reg,instcombine)` |
 | `--emit=<kind>` | stop early: `obj`, `asm`, `bc` or `ll` rather than `exe` |
 | `--keep` | keep the optimised bitcode and the object, as `<output>.bc` and `<output>.o` |
-| `--cpu=<cpu>` | the CPU to generate code for; the target's baseline by default |
+| `--cpu=<cpu>` | the CPU to generate code for; `x86-64-v3` (AVX2, 2013 and later) by default |
 | `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`) |
 | `--sysroot=<dir>` | where the C runtime is; by default `lib/<triple>` beside `bin/` |
 | `-v` | print the linker command line |
