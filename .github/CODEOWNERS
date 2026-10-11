@@ -1,0 +1,5 @@
+# Scope is deliberately narrow - NOT a `*` catch-all, which would require
+# code-owner review on every PR. The workflows and CODEOWNERS are gated so
+# the release machinery can't change unreviewed.
+/.github/workflows/   @degory
+/.github/CODEOWNERS   @degory

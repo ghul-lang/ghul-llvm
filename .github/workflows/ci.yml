@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Serialise release builds so concurrent pushes to main can't race over the
+# version number; PR builds keep their own per-ref group and cancel
+# superseded runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  version:
+    name: Create a version number
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      package: ${{ steps.version.outputs.package }}
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: '0'
+
+    # Patch bump the latest vX.Y.Z tag unless VERSION declares a higher
+    # minor/major floor. Pull request builds get a -beta.<run> suffix so
+    # they can't collide with a real release.
+    - name: Determine the version
+      id: version
+      uses: ghul-lang/create-version@v1.0.0
+      with:
+        prerelease: ${{ github.event_name == 'pull_request' && format('beta.{0}', github.run_number) || '' }}
+
+  # One job per triple, each producing that triple's archive. There is one
+  # triple so far.
+  build_and_smoke_test:
+    name: Build and smoke test
+    needs: [version]
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+
+    # LLVM's release archive is over a gigabyte. Keyed on the file that pins
+    # it, so a version bump fetches the new one and nothing else does.
+    - name: Cache downloads
+      uses: actions/cache@v6
+      with:
+        path: .cache/downloads
+        key: downloads-${{ hashFiles('build/versions.sh') }}
+
+    # Builds in the container build/Dockerfile describes, packs the release
+    # archive, and runs the smoke test against the archive as unpacked.
+    - name: Build, pack and smoke test
+      run: build/all.sh ${{ needs.version.outputs.package }}
+
+    # The programs ghul-llvm builds must run with nothing at all from the
+    # system: here, in a container that has no files but the program.
+    - name: Run a built program with no C library present
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        . build/versions.sh
+
+        scratch="$(mktemp -d)"
+        tar -xzf "dist/ghul-llvm-${TRIPLE}.tar.gz" -C "${scratch}"
+        "${scratch}/ghul-llvm-${TRIPLE}/bin/ghul-llvm" tests/hello.ll -o "${scratch}/hello"
+
+        printf 'FROM scratch\nCOPY hello /hello\nENTRYPOINT ["/hello"]\n' >"${scratch}/Dockerfile"
+        docker build -q -t ghul-llvm-hello "${scratch}" >/dev/null
+
+        output="$(docker run --rm ghul-llvm-hello)"
+        echo "${output}"
+
+        if [ "${output}" != "hello from ghul-llvm" ]; then
+          echo "the program did not run on its own" >&2
+          exit 1
+        fi
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: archives
+        path: dist
+
+  create_release:
+    name: Create release
+    needs: [version, build_and_smoke_test]
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+    if: ${{ github.event_name != 'pull_request' }}
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: '0'
+
+    - name: Download the archives
+      uses: actions/download-artifact@v8
+      with:
+        name: archives
+        path: dist
+
+    - name: Create changelog
+      run: git log -1 --format="%s%n%n%b%n%n" >changelog.txt
+
+    # Each archive is a release asset of its own, named for its triple, so a
+    # client downloads only the one for the machine it runs on.
+    - name: Create a release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ needs.version.outputs.tag }}" \
+          ./dist/*.tar.gz \
+          ./dist/*.tar.gz.sha256 \
+          --title "${{ needs.version.outputs.tag }}" \
+          --notes-file changelog.txt
