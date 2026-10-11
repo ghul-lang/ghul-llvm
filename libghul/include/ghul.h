@@ -187,6 +187,7 @@ void *ghul_host_bigint_from_int(int32_t value);
 void *ghul_host_bigint_from_long(int64_t value);
 void *ghul_host_bigint_from_ulong(uint64_t value);
 void *ghul_host_bigint_from_double(double value);
+bool ghul_host_bigint_fits_long(const void *value);
 int64_t ghul_host_bigint_to_long(const void *value);
 double ghul_host_bigint_to_double(const void *value);
 void *ghul_host_bigint_add(const void *a, const void *b);
