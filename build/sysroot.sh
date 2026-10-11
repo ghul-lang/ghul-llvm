@@ -129,10 +129,10 @@ tommath_objects=()
 for source in "${tommath_build}"/bn_*.c; do
     object="${source%.c}.o"
     "${musl_prefix}/bin/musl-gcc" -O2 -fno-pie -funwind-tables -ffunction-sections -fdata-sections \
-        -DMP_MALLOC=libghul_mp_malloc \
-        -DMP_REALLOC=libghul_mp_realloc \
-        -DMP_CALLOC=libghul_mp_calloc \
-        -DMP_FREE=libghul_mp_free \
+        -DMP_MALLOC='$libghul_mp_malloc' \
+        -DMP_REALLOC='$libghul_mp_realloc' \
+        -DMP_CALLOC='$libghul_mp_calloc' \
+        -DMP_FREE='$libghul_mp_free' \
         -I "${tommath_build}" -c "${source}" -o "${object}"
     tommath_objects+=("${object}")
 done

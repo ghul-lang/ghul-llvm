@@ -56,7 +56,7 @@ dependency on something only it has.
   name.
 - **Changing the ABI.** Anything in `ghul.h` that compiled code
   depends on is the contract with the compiler's LLVM backend. A change to it
-  raises `GHUL_ABI_VERSION`, renames `ghul_abi_<n>` to match,
+  raises `GHUL_ABI_VERSION`, renames `$ghul_abi_<n>` to match,
   and updates the README's ABI section in the same change.
 - **Unwind tables.** An exception unwinds through libghul's frames as
   well as the program's, so libghul is compiled with `-funwind-tables`

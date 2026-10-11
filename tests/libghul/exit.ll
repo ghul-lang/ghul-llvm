@@ -6,7 +6,7 @@ declare void @exit(i32)
 
 @text = private constant [17 x i8] c"written, no end.\00"
 
-define i32 @ghul_entry() {
+define i32 @$ghul_entry() {
   call void @say(ptr @text, i32 1)
   call void @exit(i32 5)
   unreachable

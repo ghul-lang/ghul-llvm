@@ -19,11 +19,11 @@
 
 /* --- libtommath's allocator: digits in the collected heap --------------- */
 
-void *libghul_mp_malloc(size_t size) {
+void *$libghul_mp_malloc(size_t size) {
     return GC_MALLOC_ATOMIC(size);
 }
 
-void *libghul_mp_calloc(size_t count, size_t size) {
+void *$libghul_mp_calloc(size_t count, size_t size) {
     void *memory = GC_MALLOC_ATOMIC(count * size);
 
     if (memory) {
@@ -33,12 +33,12 @@ void *libghul_mp_calloc(size_t count, size_t size) {
     return memory;
 }
 
-void *libghul_mp_realloc(void *memory, size_t old_size, size_t new_size) {
+void *$libghul_mp_realloc(void *memory, size_t old_size, size_t new_size) {
     (void)old_size;
     return GC_REALLOC(memory, new_size);
 }
 
-void libghul_mp_free(void *memory, size_t size) {
+void $libghul_mp_free(void *memory, size_t size) {
     (void)size;
     GC_FREE(memory);
 }
@@ -47,11 +47,11 @@ void libghul_mp_free(void *memory, size_t size) {
 
 static void check(mp_err error) {
     if (error == MP_MEM) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     if (error != MP_OKAY) {
-        libghul_fail("Unhandled exception. Ghul.ArithmeticException: bigint operation failed.\n");
+        $libghul_fail("Unhandled exception. Ghul.ArithmeticException: bigint operation failed.\n");
     }
 }
 
@@ -60,7 +60,7 @@ static mp_int *fresh(void) {
     mp_int *value = GC_MALLOC(sizeof(mp_int));
 
     if (!value) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     check(mp_init(value));
@@ -68,27 +68,27 @@ static mp_int *fresh(void) {
     return value;
 }
 
-void *ghul_host_bigint_from_int(int32_t value) {
+void *$ghul_host_bigint_from_int(int32_t value) {
     mp_int *result = fresh();
     mp_set_i32(result, value);
     return result;
 }
 
-void *ghul_host_bigint_from_long(int64_t value) {
+void *$ghul_host_bigint_from_long(int64_t value) {
     mp_int *result = fresh();
     mp_set_i64(result, value);
     return result;
 }
 
-void *ghul_host_bigint_from_ulong(uint64_t value) {
+void *$ghul_host_bigint_from_ulong(uint64_t value) {
     mp_int *result = fresh();
     mp_set_u64(result, value);
     return result;
 }
 
-void *ghul_host_bigint_from_double(double value) {
+void *$ghul_host_bigint_from_double(double value) {
     if (!isfinite(value)) {
-        libghul_fail("Unhandled exception. Ghul.OverflowException: "
+        $libghul_fail("Unhandled exception. Ghul.OverflowException: "
                      "Value was either too large or too small for a bigint.\n");
     }
 
@@ -98,7 +98,7 @@ void *ghul_host_bigint_from_double(double value) {
 }
 
 /* Whether the value fits in an i64, so the program can hold it there. */
-bool ghul_host_bigint_fits_long(const void *handle) {
+bool $ghul_host_bigint_fits_long(const void *handle) {
     const mp_int *value = handle;
     int bits = mp_count_bits(value);
 
@@ -119,12 +119,12 @@ bool ghul_host_bigint_fits_long(const void *handle) {
     return false;
 }
 
-int64_t ghul_host_bigint_to_long(const void *value) {
+int64_t $ghul_host_bigint_to_long(const void *value) {
     /* The low 64 bits of the two's complement, as a cast wraps. */
     return mp_get_i64(value);
 }
 
-double ghul_host_bigint_to_double(const void *handle) {
+double $ghul_host_bigint_to_double(const void *handle) {
     const mp_int *value = handle;
     int bits = mp_count_bits(value);
 
@@ -161,7 +161,7 @@ double ghul_host_bigint_to_double(const void *handle) {
 /* --- Arithmetic ----------------------------------------------------------- */
 
 #define BINARY(name, operation)                                     \
-    void *ghul_host_bigint_##name(const void *a, const void *b) {   \
+    void *$ghul_host_bigint_##name(const void *a, const void *b) {   \
         mp_int *result = fresh();                                   \
         check(operation(a, b, result));                             \
         return result;                                              \
@@ -175,25 +175,25 @@ BINARY(or, mp_or)
 BINARY(xor, mp_xor)
 BINARY(gcd, mp_gcd)
 
-void *ghul_host_bigint_divide(const void *a, const void *b) {
+void *$ghul_host_bigint_divide(const void *a, const void *b) {
     mp_int *result = fresh();
     check(mp_div(a, b, result, NULL));
     return result;
 }
 
-void *ghul_host_bigint_remainder(const void *a, const void *b) {
+void *$ghul_host_bigint_remainder(const void *a, const void *b) {
     mp_int *result = fresh();
     check(mp_div(a, b, NULL, result));
     return result;
 }
 
-void *ghul_host_bigint_negate(const void *a) {
+void *$ghul_host_bigint_negate(const void *a) {
     mp_int *result = fresh();
     check(mp_neg(a, result));
     return result;
 }
 
-void *ghul_host_bigint_not(const void *a) {
+void *$ghul_host_bigint_not(const void *a) {
     mp_int *result = fresh();
     check(mp_complement(a, result));
     return result;
@@ -212,17 +212,17 @@ static void *shift(const void *a, int64_t places) {
 }
 
 /* A shift by a negative count shifts the other way, as .NET's does. */
-void *ghul_host_bigint_shift_left(const void *a, int32_t places) {
+void *$ghul_host_bigint_shift_left(const void *a, int32_t places) {
     return shift(a, places);
 }
 
-void *ghul_host_bigint_shift_right(const void *a, int32_t places) {
+void *$ghul_host_bigint_shift_right(const void *a, int32_t places) {
     return shift(a, -(int64_t)places);
 }
 
-void *ghul_host_bigint_pow(const void *value, int32_t exponent) {
+void *$ghul_host_bigint_pow(const void *value, int32_t exponent) {
     if (exponent < 0) {
-        libghul_fail("Unhandled exception. Ghul.ArgumentOutOfRangeException: "
+        $libghul_fail("Unhandled exception. Ghul.ArgumentOutOfRangeException: "
                      "The exponent must not be negative.\n");
     }
 
@@ -235,14 +235,14 @@ void *ghul_host_bigint_pow(const void *value, int32_t exponent) {
  * Square and multiply with truncating remainders, so a negative value gives
  * a result of its sign, as .NET's ModPow does.
  */
-void *ghul_host_bigint_mod_pow(const void *value, const void *exponent, const void *modulus) {
+void *$ghul_host_bigint_mod_pow(const void *value, const void *exponent, const void *modulus) {
     if (mp_isneg((const mp_int *)exponent)) {
-        libghul_fail("Unhandled exception. Ghul.ArgumentOutOfRangeException: "
+        $libghul_fail("Unhandled exception. Ghul.ArgumentOutOfRangeException: "
                      "The exponent must not be negative.\n");
     }
 
     if (mp_iszero((const mp_int *)modulus)) {
-        libghul_fail("Unhandled exception. Ghul.DivideByZeroException: "
+        $libghul_fail("Unhandled exception. Ghul.DivideByZeroException: "
                      "Attempted to divide by zero.\n");
     }
 
@@ -273,12 +273,12 @@ void *ghul_host_bigint_mod_pow(const void *value, const void *exponent, const vo
 
 /* --- Comparison and hashing ---------------------------------------------- */
 
-int32_t ghul_host_bigint_compare(const void *a, const void *b) {
+int32_t $ghul_host_bigint_compare(const void *a, const void *b) {
     mp_ord order = mp_cmp(a, b);
     return order == MP_LT ? -1 : order == MP_GT ? 1 : 0;
 }
 
-bool ghul_host_bigint_equals(const void *a, const void *b) {
+bool $ghul_host_bigint_equals(const void *a, const void *b) {
     return mp_cmp(a, b) == MP_EQ;
 }
 
@@ -287,7 +287,7 @@ bool ghul_host_bigint_equals(const void *a, const void *b) {
  * own BigInteger hash differs from one process to the next, so no other
  * target can match it; this one only has to agree with equality.
  */
-int32_t ghul_host_bigint_hash(const void *value) {
+int32_t $ghul_host_bigint_hash(const void *value) {
     mp_int high, mixed;
     check(mp_init_multi(&high, &mixed, NULL));
     check(mp_signed_rsh(value, 32, &high));
@@ -301,7 +301,7 @@ int32_t ghul_host_bigint_hash(const void *value) {
 }
 
 /* The bits a two's complement value needs besides its sign. */
-int32_t ghul_host_bigint_bit_length(const void *value) {
+int32_t $ghul_host_bigint_bit_length(const void *value) {
     mp_int magnitude;
     check(mp_init(&magnitude));
 
@@ -369,25 +369,25 @@ static int integer_text(const uint16_t *chars, int32_t length, char *ascii) {
     return 1;
 }
 
-bool ghul_host_bigint_is_integer_text(const uint16_t *chars, int32_t length) {
+bool $ghul_host_bigint_is_integer_text(const uint16_t *chars, int32_t length) {
     char *ascii = GC_MALLOC_ATOMIC((size_t)length + 1);
 
     if (!ascii) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     return integer_text(chars, length, ascii);
 }
 
-void *ghul_host_bigint_parse(const uint16_t *chars, int32_t length) {
+void *$ghul_host_bigint_parse(const uint16_t *chars, int32_t length) {
     char *ascii = GC_MALLOC_ATOMIC((size_t)length + 1);
 
     if (!ascii) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     if (!integer_text(chars, length, ascii)) {
-        libghul_fail("Unhandled exception. Ghul.FormatException: "
+        $libghul_fail("Unhandled exception. Ghul.FormatException: "
                      "The value could not be parsed.\n");
     }
 
@@ -397,13 +397,13 @@ void *ghul_host_bigint_parse(const uint16_t *chars, int32_t length) {
 }
 
 static void *string_of(const char *ascii, size_t length) {
-    libghul_utf16 text = {0};
+    $libghul_utf16 text = {0};
 
     for (size_t i = 0; i < length; i++) {
-        libghul_utf16_add(&text, (uint16_t)ascii[i]);
+        $libghul_utf16_add(&text, (uint16_t)ascii[i]);
     }
 
-    return libghul_utf16_make_string(&text);
+    return $libghul_utf16_make_string(&text);
 }
 
 /* `value` in `radix`, lower case, with a '-' for a negative value. */
@@ -414,7 +414,7 @@ static char *radix_text(const mp_int *value, int radix, size_t *length) {
     char *text = GC_MALLOC_ATOMIC((size_t)size);
 
     if (!text) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     size_t written;
@@ -432,7 +432,7 @@ static char *radix_text(const mp_int *value, int radix, size_t *length) {
     return text;
 }
 
-void *ghul_host_bigint_to_string(const void *value) {
+void *$ghul_host_bigint_to_string(const void *value) {
     size_t length;
     char *text = radix_text(value, 10, &length);
     return string_of(text, length);
@@ -444,7 +444,7 @@ void *ghul_host_bigint_to_string(const void *value) {
  * whose top digit is 8 or more positive, and a leading f keeps a negative
  * value whose top digit is below 8 negative.
  */
-void *ghul_host_bigint_to_hex(const void *handle, bool upper) {
+void *$ghul_host_bigint_to_hex(const void *handle, bool upper) {
     const mp_int *value = handle;
 
     if (mp_iszero(value)) {
@@ -486,7 +486,7 @@ void *ghul_host_bigint_to_hex(const void *handle, bool upper) {
     char *out = GC_MALLOC_ATOMIC(digits + 2);
 
     if (!out) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     size_t at = 0;

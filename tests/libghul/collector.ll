@@ -3,8 +3,8 @@
 ; one. Exits with 0 when both survive with their contents and descriptors
 ; intact, so the collector both reclaims garbage and keeps what is reachable.
 
-declare ptr @ghul_alloc(ptr, i64)
-declare ptr @ghul_alloc_atomic(ptr, i64)
+declare ptr @$ghul_alloc(ptr, i64)
+declare ptr @$ghul_alloc_atomic(ptr, i64)
 
 @root_descriptor = constant i8 1
 @leaf_descriptor = constant i8 2
@@ -12,12 +12,12 @@ declare ptr @ghul_alloc_atomic(ptr, i64)
 
 @root = global ptr null
 
-define i32 @ghul_entry() {
+define i32 @$ghul_entry() {
 entry:
   ; root: { descriptor, pointer to leaf }; leaf: { descriptor, i64 marker }
-  %root = call ptr @ghul_alloc(ptr @root_descriptor, i64 16)
+  %root = call ptr @$ghul_alloc(ptr @root_descriptor, i64 16)
   store ptr %root, ptr @root
-  %leaf = call ptr @ghul_alloc_atomic(ptr @leaf_descriptor, i64 16)
+  %leaf = call ptr @$ghul_alloc_atomic(ptr @leaf_descriptor, i64 16)
   %marker_at = getelementptr i8, ptr %leaf, i64 8
   store i64 12345678, ptr %marker_at
   %child_at = getelementptr i8, ptr %root, i64 8
@@ -27,7 +27,7 @@ entry:
 churn:
   ; Four million objects of a kilobyte: four gigabytes in all.
   %i = phi i32 [ 0, %entry ], [ %next, %churn ]
-  %garbage = call ptr @ghul_alloc(ptr @garbage_descriptor, i64 1024)
+  %garbage = call ptr @$ghul_alloc(ptr @garbage_descriptor, i64 1024)
   %next = add i32 %i, 1
   %more = icmp slt i32 %next, 4000000
   br i1 %more, label %churn, label %check

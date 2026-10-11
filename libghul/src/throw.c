@@ -2,12 +2,12 @@
  * Throwing and catching, through LLVM's libunwind and the Itanium two-phase
  * unwinding protocol.
  *
- * ghul_throw wraps the exception in an unwinder header and raises it. The
- * personality routine, ghul_personality, answers for every frame the
+ * $ghul_throw wraps the exception in an unwinder header and raises it. The
+ * personality routine, $ghul_personality, answers for every frame the
  * unwinder passes: it reports a handler wherever the frame has a landing
  * pad for the call being unwound through, and nothing anywhere else. Which
  * exceptions a landing pad handles is decided by the generated code in it,
- * which re-raises with ghul_throw what it does not handle. When no frame has
+ * which re-raises with $ghul_throw what it does not handle. When no frame has
  * a landing pad, the raise returns, and the exception is unhandled.
  */
 
@@ -25,7 +25,7 @@ typedef struct {
     void *exception;
 } header;
 
-_Noreturn void ghul_throw(void *exception) {
+_Noreturn void $ghul_throw(void *exception) {
     /*
      * From the collected heap, so the exception it holds stays reachable
      * while the unwinder holds only the header.
@@ -33,7 +33,7 @@ _Noreturn void ghul_throw(void *exception) {
     header *raised = GC_MALLOC(sizeof(header));
 
     if (!raised) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     raised->unwind.exception_class = EXCEPTION_CLASS;
@@ -43,14 +43,14 @@ _Noreturn void ghul_throw(void *exception) {
     _Unwind_RaiseException(&raised->unwind);
 
     /* The raise returns only when no frame will handle the exception. */
-    libghul_flush_output();
-    ghul_report_unhandled(exception);
-    libghul_flush_output();
+    $libghul_flush_output();
+    $ghul_report_unhandled(exception);
+    $libghul_flush_output();
 
     _exit(LIBGHUL_FAILURE_STATUS);
 }
 
-void *ghul_caught(void *unwind_header) {
+void *$ghul_caught(void *unwind_header) {
     return ((header *)unwind_header)->exception;
 }
 
@@ -212,7 +212,7 @@ static uintptr_t landing_pad(struct _Unwind_Context *context) {
     return 0;
 }
 
-_Unwind_Reason_Code ghul_personality(int version, _Unwind_Action actions, uint64_t exception_class,
+_Unwind_Reason_Code $ghul_personality(int version, _Unwind_Action actions, uint64_t exception_class,
                                      struct _Unwind_Exception *exception,
                                      struct _Unwind_Context *context) {
     (void)exception_class;

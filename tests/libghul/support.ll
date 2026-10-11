@@ -1,20 +1,20 @@
 ; What libghul tests share, standing in for what a compiled ghūl program
-; provides: ghul_make_string over a string laid out as a descriptor, a
+; provides: $ghul_make_string over a string laid out as a descriptor, a
 ; length and the UTF-16 code units, and helpers for writing text.
 
 %string = type { ptr, i32, [0 x i16] }
 
 @string_descriptor = constant i8 0
 
-declare ptr @ghul_alloc_atomic(ptr, i64)
-declare void @ghul_host_write(ptr, i32, i32)
+declare ptr @$ghul_alloc_atomic(ptr, i64)
+declare void @$ghul_host_write(ptr, i32, i32)
 declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)
 
-define ptr @ghul_make_string(ptr %chars, i32 %length) {
+define ptr @$ghul_make_string(ptr %chars, i32 %length) {
   %count = sext i32 %length to i64
   %bytes = shl i64 %count, 1
   %size = add i64 %bytes, 12
-  %string = call ptr @ghul_alloc_atomic(ptr @string_descriptor, i64 %size)
+  %string = call ptr @$ghul_alloc_atomic(ptr @string_descriptor, i64 %size)
   %length_field = getelementptr %string, ptr %string, i32 0, i32 1
   store i32 %length, ptr %length_field
   %chars_field = getelementptr %string, ptr %string, i32 0, i32 2
@@ -22,12 +22,12 @@ define ptr @ghul_make_string(ptr %chars, i32 %length) {
   ret ptr %string
 }
 
-; Writes a string built by ghul_make_string.
+; Writes a string built by $ghul_make_string.
 define void @write_string(ptr %string, i32 %stream) {
   %length_field = getelementptr %string, ptr %string, i32 0, i32 1
   %length = load i32, ptr %length_field
   %chars = getelementptr %string, ptr %string, i32 0, i32 2
-  call void @ghul_host_write(ptr %chars, i32 %length, i32 %stream)
+  call void @$ghul_host_write(ptr %chars, i32 %length, i32 %stream)
   ret void
 }
 
@@ -52,11 +52,11 @@ copy:
   br label %loop
 
 write:
-  call void @ghul_host_write(ptr %buffer, i32 %i, i32 %stream)
+  call void @$ghul_host_write(ptr %buffer, i32 %i, i32 %stream)
   ret void
 }
 
-; Answers whether a string built by ghul_make_string holds exactly the given
+; Answers whether a string built by $ghul_make_string holds exactly the given
 ; NUL-terminated ASCII text.
 define i1 @string_is(ptr %string, ptr %text) {
 entry:
@@ -99,10 +99,10 @@ different:
 
 @bytes_descriptor = constant i8 0
 
-define ptr @ghul_make_bytes(ptr %data, i32 %length) {
+define ptr @$ghul_make_bytes(ptr %data, i32 %length) {
   %count = sext i32 %length to i64
   %size = add i64 %count, 12
-  %array = call ptr @ghul_alloc_atomic(ptr @bytes_descriptor, i64 %size)
+  %array = call ptr @$ghul_alloc_atomic(ptr @bytes_descriptor, i64 %size)
   %length_field = getelementptr %bytes, ptr %array, i32 0, i32 1
   store i32 %length, ptr %length_field
   %data_field = getelementptr %bytes, ptr %array, i32 0, i32 2
@@ -110,7 +110,7 @@ define ptr @ghul_make_bytes(ptr %data, i32 %length) {
   ret ptr %array
 }
 
-; Writes an array built by ghul_make_bytes, whose bytes are ASCII, to stream 1.
+; Writes an array built by $ghul_make_bytes, whose bytes are ASCII, to stream 1.
 define void @write_bytes(ptr %array) {
 entry:
   %length_field = getelementptr %bytes, ptr %array, i32 0, i32 1
@@ -133,6 +133,6 @@ copy:
   br label %loop
 
 write:
-  call void @ghul_host_write(ptr %wide, i32 %length, i32 1)
+  call void @$ghul_host_write(ptr %wide, i32 %length, i32 1)
   ret void
 }

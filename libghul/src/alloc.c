@@ -7,7 +7,7 @@
 
 static void *finish(void *object, const void *descriptor, size_t size) {
     if (!object) {
-        libghul_fail("Out of memory.\n");
+        $libghul_fail("Out of memory.\n");
     }
 
     if (size >= sizeof(void *)) {
@@ -17,12 +17,12 @@ static void *finish(void *object, const void *descriptor, size_t size) {
     return object;
 }
 
-void *ghul_alloc(const void *descriptor, size_t size) {
+void *$ghul_alloc(const void *descriptor, size_t size) {
     /* GC_MALLOC answers zeroed memory. */
     return finish(GC_MALLOC(size), descriptor, size);
 }
 
-void *ghul_alloc_atomic(const void *descriptor, size_t size) {
+void *$ghul_alloc_atomic(const void *descriptor, size_t size) {
     /* GC_MALLOC_ATOMIC does not zero what it answers. */
     void *object = GC_MALLOC_ATOMIC(size);
 
