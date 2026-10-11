@@ -114,6 +114,12 @@ string objects when libghul asks.
 - `void *$ghul_alloc_atomic(const void *descriptor, size_t size)`: the same,
   for an object holding no pointers (strings, arrays of numbers, boxed
   numbers), which the collector does not scan.
+- `void *$ghul_clone(const void *object)`: a shallow copy of the whole
+  allocation, descriptor included, allocated as the same kind as the
+  original, so a copy of an object the collector does not scan is not
+  scanned either.
+- `int32_t $ghul_identity_hash(const void *object)`: a hash of the object's
+  identity, unchanged while it lives, since the collector never moves it.
 - `_Noreturn void $ghul_throw(void *exception)`: throws the exception,
   unwinding to the nearest landing pad (below). Where no frame has one, the
   exception is unhandled: libghul calls `$ghul_report_unhandled`, flushes

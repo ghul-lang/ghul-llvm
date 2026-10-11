@@ -88,6 +88,19 @@ void *$ghul_alloc(const void *descriptor, size_t size);
  */
 void *$ghul_alloc_atomic(const void *descriptor, size_t size);
 
+/*
+ * A shallow copy of `object`: every byte of its allocation, descriptor
+ * included, in a new allocation of the same kind, so a copy of an atomic
+ * object is atomic too. The collector may give the copy a larger block.
+ */
+void *$ghul_clone(const void *object);
+
+/*
+ * A hash of `object`'s identity, the same for as long as it lives, since
+ * the collector never moves it.
+ */
+int32_t $ghul_identity_hash(const void *object);
+
 /* --- Exceptions --------------------------------------------------------- */
 
 /*

@@ -3,6 +3,9 @@
 #include "internal.h"
 
 #include <gc.h>
+#include <gc/gc_inline.h>
+#include <gc/gc_mark.h>
+#include <stdint.h>
 #include <string.h>
 
 static void *finish(void *object, const void *descriptor, size_t size) {
@@ -31,4 +34,29 @@ void *$ghul_alloc_atomic(const void *descriptor, size_t size) {
     }
 
     return finish(object, descriptor, size);
+}
+
+void *$ghul_clone(const void *object) {
+    size_t size = 0;
+    int kind = GC_get_kind_and_size(object, &size);
+
+    /* The copy is the same kind as the original, so an object the collector
+       does not scan for pointers stays one it does not scan. */
+    void *copy = kind == GC_I_PTRFREE ? GC_MALLOC_ATOMIC(size) : GC_MALLOC(size);
+
+    if (!copy) {
+        $libghul_fail("Out of memory.\n");
+    }
+
+    memcpy(copy, object, size);
+
+    return copy;
+}
+
+int32_t $ghul_identity_hash(const void *object) {
+    /* The collector never moves an object, so its address is its identity
+       for as long as it lives. The low bits are alignment and carry nothing. */
+    uintptr_t address = (uintptr_t)object >> 4;
+
+    return (int32_t)(uint32_t)(address ^ (address >> 32));
 }
