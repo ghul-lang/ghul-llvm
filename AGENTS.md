@@ -15,13 +15,17 @@ used, and `.github/claude-review.md` for what to be careful of.
   reads, verifies, optimises and generates code; `link.cpp` drives LLD as a
   library; `main.cpp` ties them together. `polly.cpp` is a stub explained in
   its own comment.
+- `runtime/` — the ghūl runtime, `libghulrt.a`: C, built with musl-gcc.
+  `runtime/include/ghulrt.h` declares the ABI that README.md describes.
 - `CMakeLists.txt` — builds `src/` against an unpacked LLVM release, and
   generates the stubs that keep every backend but the target's out of the
   executable.
 - `build/` — the build, all of it run inside the container `build/Dockerfile`
   describes, through `build/docker.sh`. `versions.sh` pins every input.
   `all.sh` runs everything.
-- `tests/` — `smoke.sh` and the IR it builds.
+- `tests/` — `smoke.sh` and the IR it builds. `tests/runtime/` holds programs
+  that exercise the runtime, with `support.ll` standing in for what a
+  compiled program provides.
 - `licenses/` — licences of third-party code shipped in the release archive
   that the build cannot copy from elsewhere.
 
@@ -49,6 +53,10 @@ dependency on something only it has.
   the `-L` directories. LLD searches no default paths unless told to, so
   never pass it `--sysroot`, a `-L` it was not given, or a library by bare
   name.
+- **Changing the runtime ABI.** Anything in `ghulrt.h` that compiled code
+  depends on is the contract with the compiler's LLVM backend. A change to it
+  raises `GHUL_RUNTIME_ABI_VERSION`, renames `ghul_runtime_abi_<n>` to match,
+  and updates the README's ABI section in the same change.
 - **Raising the glibc requirement.** The build runs on Ubuntu 22.04 so that
   `ghul-llvm` needs no newer glibc than LLVM's release does. Building on a
   newer distribution raises it silently; the smoke test prints the version

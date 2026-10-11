@@ -23,3 +23,9 @@ LLVM_BUILTINS=lib/clang/${LLVM_VERSION%%.*}/lib/x86_64-unknown-linux-gnu/libclan
 MUSL_VERSION=1.2.6
 MUSL_SHA256=d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a
 MUSL_URL=https://musl.libc.org/releases/musl-${MUSL_VERSION}.tar.gz
+
+# The garbage collector the runtime allocates from, built single-threaded
+# against musl and shipped as libgc.a.
+BDWGC_VERSION=8.2.12
+BDWGC_SHA256=42e5194ad06ab6ffb806c83eb99c03462b495d979cda782f3c72c08af833cd4e
+BDWGC_URL=https://github.com/ivmai/bdwgc/releases/download/v${BDWGC_VERSION}/gc-${BDWGC_VERSION}.tar.gz

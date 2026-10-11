@@ -10,6 +10,13 @@
 #define GHUL_LLVM_VERSION "0.0.0-local"
 #endif
 
+#ifndef GHUL_RUNTIME_ABI_VERSION
+#error "GHUL_RUNTIME_ABI_VERSION must be defined by the build"
+#endif
+
+#define GHUL_STRINGIFY_(x) #x
+#define GHUL_STRINGIFY(x) GHUL_STRINGIFY_(x)
+
 #ifndef GHUL_LLVM_TRIPLE
 #error "GHUL_LLVM_TRIPLE must be defined by the build"
 #endif
@@ -22,7 +29,8 @@ constexpr const char *usage_text =
     "usage: ghul-llvm [options] <input.ll|input.bc> [<object or archive>...] -o <output>\n"
     "\n"
     "Assembles, optimises and compiles LLVM IR, and links the result with the\n"
-    "C runtime into a statically linked executable for " GHUL_LLVM_TRIPLE ".\n"
+    "ghul runtime, the collector and the C runtime into a statically linked\n"
+    "executable for " GHUL_LLVM_TRIPLE ".\n"
     "\n"
     "options:\n"
     "  -o <file>             write the output to <file>\n"
@@ -41,6 +49,7 @@ constexpr const char *usage_text =
     "                        beside the directory ghul-llvm is in)\n"
     "  -v, --verbose         print the linker command line\n"
     "  --version             print the version and exit\n"
+    "  --runtime-abi-version print the version of the ghul runtime ABI and exit\n"
     "  --help                print this and exit\n";
 
 int usage_error(const std::string &message) {
@@ -102,7 +111,13 @@ Parsed parse_options(int argc, char **argv) {
 
         if (arg == "--version") {
             llvm::outs() << "ghul-llvm " GHUL_LLVM_VERSION " (LLVM " LLVM_VERSION_STRING
-                            ", " GHUL_LLVM_TRIPLE ")\n";
+                            ", " GHUL_LLVM_TRIPLE ", runtime ABI " GHUL_STRINGIFY(
+                                GHUL_RUNTIME_ABI_VERSION) ")\n";
+            return parsed;
+        }
+
+        if (arg == "--runtime-abi-version") {
+            llvm::outs() << GHUL_RUNTIME_ABI_VERSION << "\n";
             return parsed;
         }
 

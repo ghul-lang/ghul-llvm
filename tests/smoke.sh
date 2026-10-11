@@ -161,6 +161,76 @@ expect_status 1 "reports a missing C runtime" \
 expect_status 2 "rejects an unknown option" "${tool}" --no-such-option "${tests}/hello.ll" -o x
 expect_status 2 "insists on an output" "${tool}" "${tests}/hello.ll"
 
+# The ghūl runtime: programs that define ghul_entry rather than main, with
+# tests/runtime/support.ll standing in for the rest of a compiled program.
+runtime="${tests}/runtime"
+
+expect_status 0 "builds the runtime tests' support object" \
+    "${tool}" --emit=obj "${runtime}/support.ll" -o support.o
+
+for program in output process lines characters collector scalars unhandled exit; do
+    expect_status 0 "links ${program} with the runtime" \
+        "${tool}" "${runtime}/${program}.ll" support.o -o "${program}"
+done
+
+# check <description> <expected> <actual>
+check() {
+    if [ "$2" = "$3" ]; then
+        pass "$1"
+    else
+        fail "$1: expected '$2', got '$3'"
+    fi
+}
+
+status=0
+./output >output.out 2>output.err || status=$?
+check "the entry's result is the exit status" 3 "${status}"
+check "standard output is UTF-8, with an unpaired surrogate replaced" \
+    "$(printf 'stdout  again\303\251\342\202\254\360\237\230\200\357\277\275\n\360\237\230\200\n' | od -An -c)" \
+    "$(od -An -c output.out)"
+check "standard error is written" "stderr" "$(cat output.err)"
+
+check "arguments, environment names and a lookup reach the program" \
+    "$(printf 'na\303\257ve \342\230\203\n\ntwo\nA\nGHUL_TEST\nh\303\251llo')" \
+    "$(env -i A=b GHUL_TEST=héllo ./process "naïve ☃" "" two)"
+check "a variable that is not set looks up as absent" "unset" "$(env -i ./process)"
+
+check "lines end at \\n, \\r\\n and \\r, and at the end of the input" \
+    "$(printf '>one\n>two\n>three\n>last')" \
+    "$(printf 'one\r\ntwo\rthree\nlast' | ./lines)"
+check "an empty input has no lines" "" "$(./lines </dev/null)"
+
+status=0
+rest="$(printf 'xab\342\202\254c' | ./characters)" || status=$?
+check "peek and read agree, and the rest is read to the end" "0 ab€c" "${status} ${rest}"
+status=0
+./characters </dev/null >/dev/null || status=$?
+check "an empty input reads as its end" 0 "${status}"
+
+# Four gigabytes allocated under a one gigabyte limit: only a collector that
+# reclaims garbage, and keeps what is still reachable, gets to the end.
+status=0
+(ulimit -v 1048576 && ./collector) || status=$?
+check "the collector reclaims garbage and keeps what is reachable" 0 "${status}"
+
+status=0
+./scalars || status=$?
+check "math, the clock, random numbers and the ABI version answer as they should" 0 "${status}"
+
+status=0
+./unhandled >unhandled.out 2>unhandled.err || status=$?
+check "an unhandled exception exits with 134" 134 "${status}"
+check "output written before the exception is flushed" "before" "$(cat unhandled.out)"
+check "the program describes the exception" \
+    "Unhandled exception. Test.Failure: it broke" "$(cat unhandled.err)"
+
+status=0
+./exit >exit.out || status=$?
+check "leaving through exit keeps its status" 5 "${status}"
+check "leaving through exit flushes output" "written, no end." "$(cat exit.out)"
+
+check "reports the runtime ABI version" 1 "$("${tool}" --runtime-abi-version)"
+
 # ghul-llvm itself needs nothing from the system but the C library.
 needed="$(readelf -d "${tool}" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort | tr '\n' ' ')"
 
