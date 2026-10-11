@@ -6,10 +6,12 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/random.h>
 #include <time.h>
+#include <unistd.h>
 
 static int argument_count;
 static char **arguments;
@@ -141,4 +143,28 @@ int32_t $ghul_host_random_u32(void) {
     }
 
     return (int32_t)value;
+}
+
+double $ghul_host_wall_clock_milliseconds(void) {
+    struct timespec now;
+
+    clock_gettime(CLOCK_REALTIME, &now);
+
+    return (double)now.tv_sec * 1000.0 + (double)now.tv_nsec / 1000000.0;
+}
+
+_Noreturn void $ghul_host_exit(int32_t code) {
+    /* The output written so far is flushed by the handler main registers. */
+    exit(code);
+}
+
+void *$ghul_host_process_path(void) {
+    char path[PATH_MAX];
+    ssize_t length = readlink("/proc/self/exe", path, sizeof path);
+
+    if (length <= 0 || (size_t)length >= sizeof path) {
+        return NULL;
+    }
+
+    return string_from_utf8(path, (size_t)length);
 }
