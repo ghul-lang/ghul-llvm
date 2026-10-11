@@ -147,6 +147,23 @@ void *$ghul_host_stdin_read_to_end(void);
 /* Milliseconds since the program started, from a clock that never goes back. */
 double $ghul_host_monotonic_milliseconds(void);
 
+/*
+ * Running another program. process_begin starts a command with the program
+ * to run, found on the PATH where it names no directory, and
+ * process_add_argument adds each argument. process_run runs the command to
+ * completion, sharing standard input and capturing standard output and
+ * standard error, and answers its exit status, or -1 where it could not be
+ * started, with the reason in process_failure: 1 the program was not found,
+ * 2 any other. process_output and process_error answer what the last run
+ * captured.
+ */
+void $ghul_host_process_begin(const uint16_t *file_name, int32_t length);
+void $ghul_host_process_add_argument(const uint16_t *argument, int32_t length);
+int32_t $ghul_host_process_run(void);
+int32_t $ghul_host_process_failure(void);
+void *$ghul_host_process_output(void);
+void *$ghul_host_process_error(void);
+
 /* Milliseconds since 1970-01-01T00:00:00Z, from the system clock. */
 double $ghul_host_wall_clock_milliseconds(void);
 

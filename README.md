@@ -202,6 +202,11 @@ A host operation's C signature follows from its declaration:
 | `host.stdin_read_line` | `void *(void)` | without its ending (`\n`, `\r\n` or `\r`); `NULL` at the end |
 | `host.stdin_read_to_end` | `void *(void)` | everything left, possibly empty |
 | `host.monotonic_milliseconds` | `double (void)` | since the program started |
+| `host.process_begin` | `void (file_name)` | starts a command; a name with no `/` is found on the `PATH` |
+| `host.process_add_argument` | `void (argument)` | adds the next argument |
+| `host.process_run` | `int32_t (void)` | runs the command to completion, standard input shared, standard output and error captured; the exit status, 128 plus the signal for one that was killed, or -1 where it could not start |
+| `host.process_failure` | `int32_t (void)` | why the last run could not start: 0 it did, 1 the program was not found, 2 anything else |
+| `host.process_output`, `host.process_error` | `void *(void)` | what the last run wrote to standard output and standard error |
 | `host.wall_clock_milliseconds` | `double (void)` | since 1970-01-01T00:00:00Z |
 | `host.exit` | `void (int32_t)` | ends the process with that status, after flushing standard output |
 | `host.process_path` | `void *(void)` | the running executable, from `/proc/self/exe`; `NULL` where it cannot be read |
