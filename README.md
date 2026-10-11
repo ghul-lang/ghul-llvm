@@ -221,19 +221,19 @@ A host operation's C signature follows from its declaration:
 Input is decoded from UTF-8 and output encoded to it; a byte sequence that is
 not UTF-8, or an unpaired surrogate, becomes U+FFFD.
 
-Every `host.bigint_*` operation the core library declares is provided, over
-libtommath, with the semantics of .NET's `BigInteger` as the Wasm target
-gives them: division truncates, a remainder takes the dividend's sign, shifts
-are arithmetic and a negative count shifts the other way, the bitwise
-operations act on two's complement, `bigint_to_long` keeps the low 64 bits,
-`bigint_to_double` truncates to the 53 bits a double holds, and
-`bigint_to_hex` writes the fewest two's complement digits that keep the sign.
-`bigint_hash` is the low 32 bits of `value ^ (value >> 32)`, as on Wasm:
-.NET's own hash changes from one process to the next, so nothing else can
-match it. Division by zero is for
-the core library to check before calling; an argument an operation cannot
-take, such as a double that is not finite or a negative exponent, ends the
-process as an unhandled exception.
+Every `host.bigint_*` operation the core library declares is provided,
+over libtommath, with the semantics of .NET's `BigInteger` as the Wasm
+target gives them: division truncates, a remainder takes the dividend's
+sign, shifts are arithmetic and a negative count shifts the other way,
+the bitwise operations act on two's complement, `bigint_to_long` keeps
+the low 64 bits, `bigint_to_double` truncates to the 53 bits a double
+holds, and `bigint_to_hex` writes the fewest two's complement digits that
+keep the sign. `bigint_hash` is the low 32 bits of
+`value ^ (value >> 32)`, as on Wasm: .NET's own hash changes from one
+process to the next, so nothing else can match it. Division by zero is for
+the core library to check before calling; an argument an operation cannot take, such as a
+double that is not finite or a negative exponent, ends the process as an
+unhandled exception.
 
 Files are the real file system, as on .NET. A path argument is a `string`,
 which the core library makes full first. The file operations answer a code:
