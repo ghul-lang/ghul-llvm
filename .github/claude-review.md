@@ -16,7 +16,12 @@ the new pass manager, generates an object, and links that with LLD — used as
 a library, in the same process — statically against musl and compiler-rt
 builtins that ship beside it. The result is a statically linked executable.
 
-It is C++ over LLVM's own prebuilt release libraries: nothing from LLVM is
+The repository also holds the ghūl runtime (`runtime/`), C linked into every
+program: `main`, allocation from the Boehm collector, throwing, and the host
+operations the core library declares. Its interface to compiled code is the
+versioned ABI in `runtime/include/ghulrt.h` and README.md.
+
+The tool is C++ over LLVM's own prebuilt release libraries: nothing from LLVM is
 compiled here. The release is one archive per target triple, holding the tool
 and the C runtime. Only `x86_64-unknown-linux-musl` exists so far.
 
@@ -38,6 +43,12 @@ and the C runtime. Only `x86_64-unknown-linux-musl` exists so far.
   for a usage error. The compiler distinguishes them, so a change that
   reports a bad input as a usage error, or crashes instead of reporting, is a
   bug.
+- **The runtime ABI.** A change to what `ghulrt.h` declares that compiled
+  code depends on, without raising `GHUL_RUNTIME_ABI_VERSION`, renaming
+  `ghul_runtime_abi_<n>` and updating the README's ABI section, is a finding.
+- **The runtime is ignorant of object layout.** It handles strings only as
+  UTF-16 code units and builds them through `ghul_make_string`; a change that
+  reads or writes the program's own objects is a finding.
 - **The glibc requirement.** The build runs on Ubuntu 22.04 deliberately; a
   change to `build/Dockerfile` that moves to a newer distribution raises the
   glibc version the tool needs.

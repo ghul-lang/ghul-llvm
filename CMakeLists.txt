@@ -20,6 +20,11 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" version_file)
 string(STRIP "${version_file}" version_file)
 
 set(GHUL_LLVM_VERSION "${version_file}" CACHE STRING "the version ghul-llvm reports")
+
+# The runtime's ABI version, which ghul-llvm reports for the compiler to check.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/runtime/include/ghulrt.h" abi_line
+    REGEX "^#define GHUL_RUNTIME_ABI_VERSION ")
+string(REGEX REPLACE "^#define GHUL_RUNTIME_ABI_VERSION ([0-9]+).*" "\\1" GHUL_RUNTIME_ABI_VERSION "${abi_line}")
 set(GHUL_LLVM_TRIPLE "x86_64-unknown-linux-musl" CACHE STRING "the triple ghul-llvm generates code for")
 set(GHUL_LLVM_BACKEND "X86" CACHE STRING "the LLVM backend for that triple, as LLVM names it")
 
@@ -64,6 +69,7 @@ target_compile_definitions(ghul-llvm PRIVATE
     __STDC_LIMIT_MACROS
     GHUL_LLVM_VERSION="${GHUL_LLVM_VERSION}"
     GHUL_LLVM_TRIPLE="${GHUL_LLVM_TRIPLE}"
+    GHUL_RUNTIME_ABI_VERSION=${GHUL_RUNTIME_ABI_VERSION}
 )
 
 target_compile_options(ghul-llvm PRIVATE -fno-exceptions -fno-rtti -Wall -Wextra)

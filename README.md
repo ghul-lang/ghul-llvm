@@ -15,8 +15,10 @@ ghul-llvm [options] program.ll -L <runtime dir> -l<library> -o program
    (`-O2` unless told otherwise), or with a pipeline given by `--passes`.
 3. Generates an object for the target.
 4. Links it with LLD, statically, against the libraries it is given and the
-   C runtime that ships with the tool: musl's start files and C library, and
-   LLVM's compiler-rt builtins. Nothing is read from the system it runs on.
+   runtime that ships with the tool: the ghūl runtime (`libghulrt.a`), the
+   Boehm garbage collector (`libgc.a`), musl's start files and C library,
+   and LLVM's compiler-rt builtins. Nothing is read from the system it runs
+   on.
 
 The executable it produces is statically linked and runs on any Linux of the
 same architecture.
@@ -34,6 +36,7 @@ same architecture.
 | `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`) |
 | `--sysroot=<dir>` | where the C runtime is; by default `lib/<triple>` beside `bin/` |
 | `-v` | print the linker command line |
+| `--runtime-abi-version` | print the version of the runtime ABI, below |
 | `--version`, `--help` | |
 
 Objects (`.o`) and archives (`.a`) named on the command line are linked as
@@ -55,13 +58,89 @@ The archive unpacks to a single directory:
 ```
 ghul-llvm-x86_64-unknown-linux-musl/
   bin/ghul-llvm
-  lib/x86_64-unknown-linux-musl/   crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
+  lib/x86_64-unknown-linux-musl/   libghulrt.a libgc.a crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
   licenses/
 ```
 
 `ghul-llvm` itself needs glibc 2.34 or later and nothing else, which covers
 Ubuntu 22.04, Debian 12, RHEL 9 and their successors. x86-64 Linux is the
 only target so far.
+
+## The runtime ABI
+
+**Version 1.** `ghul-llvm --runtime-abi-version` prints it, and a program can
+refer to `ghul_runtime_abi_1`, which the runtime defines, to fail to link
+against a runtime of any other version. A change to anything below that a
+compiled program depends on raises it. `runtime/include/ghulrt.h` has the C
+declarations.
+
+The runtime is the native counterpart of the Wasm target's JavaScript loader.
+It knows nothing of how the program lays out its objects or strings: a string
+crosses the boundary as UTF-16 code units, and the program builds its own
+string objects when the runtime asks.
+
+### What the program provides
+
+| symbol | |
+|---|---|
+| `int32_t ghul_entry(void)` | the program's entry; its result is the exit status. An entry that takes `string[]` is wrapped by one that builds the array through `ghul_host_argument` |
+| `void *ghul_make_string(const uint16_t *chars, int32_t length)` | builds one of the program's strings; the code units are valid only during the call |
+| `void ghul_report_unhandled(void *exception)` | writes `Unhandled exception. <Type>: <message>` and a newline to stream 2 through `ghul_host_write`; needed only by a program that throws |
+
+### What the runtime provides
+
+- `main`, which starts the collector, keeps the arguments and environment,
+  calls `ghul_entry` and returns its result. Standard output is flushed on
+  every way out: returning, `exit`, and an unhandled exception.
+- `void *ghul_alloc(const void *descriptor, size_t size)`: `size` bytes,
+  header included, from the collected heap, zeroed, with `descriptor` in the
+  first word. The collector scans it for pointers.
+- `void *ghul_alloc_atomic(const void *descriptor, size_t size)`: the same,
+  for an object holding no pointers (strings, arrays of numbers, boxed
+  numbers), which the collector does not scan.
+- `_Noreturn void ghul_throw(void *exception)`: for now every exception is
+  unhandled. The runtime calls `ghul_report_unhandled`, flushes output and
+  exits with status 134, as a .NET process does.
+- One `ghul_host_<name>` function for each operation the core library declares
+  with `@intrinsic("host.<name>")`.
+
+### Host operations
+
+A host operation's C signature follows from its declaration:
+
+| ghūl | C |
+|---|---|
+| `int` | `int32_t` |
+| `long` | `int64_t` |
+| `double` | `double` |
+| `char` | `uint16_t` |
+| `bool` | `bool` |
+| `string` argument | two parameters: `const uint16_t *chars, int32_t length` |
+| `string` result | `void *`, made by `ghul_make_string` |
+| `string?` result | the same, or `NULL` when absent |
+
+| operation | C signature | notes |
+|---|---|---|
+| `host.write` | `void (const uint16_t *, int32_t, int32_t stream)` | UTF-8 to standard output (stream 1) or standard error (2); any other stream is standard output. Output is buffered and flushed before standard error is written and before input is read |
+| `host.argument_count` | `int32_t (void)` | not counting the program's name |
+| `host.argument` | `void *(int32_t)` | |
+| `host.environment_count` | `int32_t (void)` | the environment as it was at start |
+| `host.environment_name` | `void *(int32_t)` | |
+| `host.environment_lookup` | `void *(const uint16_t *, int32_t)` | `NULL` when not set |
+| `host.stdin_read` | `int32_t (void)` | a UTF-16 code unit, or -1 at the end |
+| `host.stdin_peek` | `int32_t (void)` | the same, without taking it |
+| `host.stdin_read_line` | `void *(void)` | without its ending (`\n`, `\r\n` or `\r`); `NULL` at the end |
+| `host.stdin_read_to_end` | `void *(void)` | everything left, possibly empty |
+| `host.monotonic_milliseconds` | `double (void)` | since the program started |
+| `host.random_u32` | `int32_t (void)` | 32 random bits |
+| `host.math_<f>` | `double (double)` | `sqrt`, `cbrt`, `floor`, `ceiling`, `truncate`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `exp`, `log`, `log10`, `log2` |
+| `host.math_atan2`, `host.math_pow` | `double (double, double)` | |
+
+Input is decoded from UTF-8 and output encoded to it; a byte sequence that is
+not UTF-8, or an unpaired surrogate, becomes U+FFFD.
+
+Not yet provided: `host.input_file_*`, `host.file_written` and `host.bigint_*`.
+A program that uses them fails to link.
 
 ## Building
 
@@ -74,24 +153,28 @@ build/all.sh
 
 That fetches LLVM's own release build for the pinned version (prebuilt
 static libraries for LLVM and LLD; nothing from LLVM is compiled here), builds
-musl, builds `ghul-llvm` into `out/`, packs the release archive into `dist/`
+musl and the collector, builds `ghul-llvm` and the runtime into `out/`, packs the release archive into `dist/`
 and runs `tests/smoke.sh` against it. The first run downloads about 1.1GB;
 everything is cached under `.cache/`, and a later run takes under a minute.
 
 The pieces can be run on their own, inside the build environment:
 
 ```sh
-build/docker.sh build/sysroot.sh   # musl and the builtins, into .cache/
+build/docker.sh build/sysroot.sh   # musl, the builtins and the collector, into .cache/
 build/docker.sh build/tool.sh      # ghul-llvm, into out/
+build/docker.sh build/runtime.sh   # libghulrt.a, into out/
 build/docker.sh build/package.sh   # the release archive, into dist/
 tests/smoke.sh                     # checks the build in out/
 ```
 
-The versions of LLVM and musl, and their checksums, are pinned in
-`build/versions.sh`.
+The versions of LLVM, musl and the collector, and their checksums, are pinned
+in `build/versions.sh`. `GHUL_LLVM_CACHE` moves the cache, so several
+checkouts can share one copy of LLVM's release.
 
 ## Licence
 
-ghul-llvm is MIT licensed. The release archive also carries LLVM and LLD
-(Apache 2.0 with LLVM exceptions), musl (MIT), zlib and zstd; their licences
-are in its `licenses/` directory.
+ghul-llvm and its runtime are MIT licensed. The release archive also carries
+LLVM and LLD (Apache 2.0 with LLVM exceptions), musl (MIT), the Boehm
+collector (MIT-style), zlib and zstd; their licences are in its `licenses/`
+directory. Of those, only musl, the collector and the compiler-rt builtins are
+linked into the programs ghul-llvm builds.

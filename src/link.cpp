@@ -59,7 +59,9 @@ class TemporaryFile {
 bool link(const Options &options, llvm::StringRef object, const char *argv0) {
     std::string sysroot = options.sysroot ? *options.sysroot : default_sysroot(argv0);
 
-    const char *runtime[] = {"crt1.o", "crti.o", "crtn.o", "libc.a", "libclang_rt.builtins.a"};
+    const char *runtime[] = {"crt1.o",  "crti.o", "crtn.o",
+                             "libghulrt.a", "libgc.a", "libc.a",
+                             "libclang_rt.builtins.a"};
 
     for (const char *file : runtime) {
         llvm::SmallString<256> path(sysroot);
@@ -112,8 +114,11 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
     }
 
     // The order is the one a C compiler driver gives a static link: start
-    // files, the program, its libraries, the C library and the builtins
-    // grouped so that each can use the others, and the closing start file.
+    // files, the program, its libraries, then the ghūl runtime, the
+    // collector, the C library and the builtins, grouped so that each can
+    // use the others, and the closing start file. An archive member is only
+    // taken when something refers to it, so a program that defines its own
+    // main takes nothing from the ghūl runtime.
     // Nothing is searched for outside the sysroot and the -L directories.
     std::vector<std::string> args = {
         "ld.lld",
@@ -140,6 +145,8 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
         args.push_back("-l" + library);
     }
 
+    args.push_back(in_sysroot("libghulrt.a"));
+    args.push_back(in_sysroot("libgc.a"));
     args.push_back(in_sysroot("libc.a"));
     args.push_back(in_sysroot("libclang_rt.builtins.a"));
     args.push_back("--end-group");

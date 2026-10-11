@@ -3,8 +3,8 @@
 #
 #   build/all.sh [version]
 #
-# fetches and unpacks LLVM's release, builds the C runtime, builds
-# ghul-llvm into out/, and packs the release archive into dist/. Then runs
+# fetches and unpacks LLVM's release, builds the C runtime and the
+# collector, builds ghul-llvm and the ghūl runtime into out/, and packs the release archive into dist/. Then runs
 # the smoke test against the archive as a user would unpack it. Inputs are
 # cached under .cache/, so a second run only rebuilds ghul-llvm.
 
@@ -17,6 +17,7 @@ version="${1:-}"
     set -euo pipefail
     build/sysroot.sh
     build/tool.sh ${version}
+    build/runtime.sh
     build/package.sh
 "
 

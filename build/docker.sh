@@ -23,7 +23,15 @@ if [ -t 0 ] && [ -t 1 ]; then
     tty=(-it)
 fi
 
-exec docker run --rm "${tty[@]}" \
+# A cache kept outside the checkout is mounted at the same path, so the
+# scripts find it where the caller said it was.
+cache=()
+if [ -n "${GHUL_LLVM_CACHE:-}" ]; then
+    mkdir -p "${GHUL_LLVM_CACHE}"
+    cache=(-e GHUL_LLVM_CACHE -v "${GHUL_LLVM_CACHE}:${GHUL_LLVM_CACHE}")
+fi
+
+exec docker run --rm "${tty[@]}" "${cache[@]}" \
     -u "$(id -u):$(id -g)" \
     -e HOME=/tmp \
     -e JOBS \

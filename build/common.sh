@@ -8,15 +8,21 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=build/versions.sh
 . "${root}/build/versions.sh"
 
-cache="${root}/.cache"
+# Everything fetched or built from a pinned input. GHUL_LLVM_CACHE moves it,
+# so that several checkouts can share one copy of LLVM's release.
+cache="${GHUL_LLVM_CACHE:-${root}/.cache}"
 downloads="${cache}/downloads"
 work="${cache}/build"
 
 # LLVM's release, unpacked down to the headers and static libraries, and the
-# C runtime executables are linked against. Each is named for what it came
+# C runtime and collector executables are linked against. Each is named for what it came
 # from, so a version change never reuses an old one.
 llvm_prefix="${cache}/${LLVM_RELEASE}"
-sysroot="${cache}/sysroot-${TRIPLE}-musl-${MUSL_VERSION}-llvm-${LLVM_VERSION}"
+sysroot="${cache}/sysroot-${TRIPLE}-musl-${MUSL_VERSION}-llvm-${LLVM_VERSION}-gc-${BDWGC_VERSION}"
+
+# musl, installed with its headers and the musl-gcc wrapper that compiles C
+# against it: the runtime and the collector are built with it.
+musl_prefix="${cache}/musl-${MUSL_VERSION}"
 
 out="${root}/out"
 dist="${root}/dist"
