@@ -33,7 +33,7 @@ struct Options {
     // A new pass manager pipeline that replaces the default one.
     std::optional<std::string> passes;
 
-    std::string cpu;
+    std::string cpu = GHUL_LLVM_CPU;
 
     // Where crt1.o, libc.a and the rest of the C runtime are. Defaults to
     // the directory beside the executable.

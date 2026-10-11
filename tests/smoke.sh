@@ -112,6 +112,11 @@ expect_status 0 "the program built from bitcode runs" ./from-bitcode
 expect_status 0 "emits assembly" "${tool}" --emit=asm "${tests}/hello.ll" -o hello.s
 grep -q 'main:' hello.s && pass "the assembly defines main" || fail "the assembly has no main"
 
+expect_status 0 "emits assembly for the default CPU" "${tool}" --emit=asm "${tests}/shift.ll" -o shift.s
+grep -q shlx shift.s && pass "code is generated for x86-64-v3 by default" || fail "shift.s does not use x86-64-v3's shlx"
+expect_status 0 "emits assembly for a named CPU" "${tool}" --emit=asm --cpu=x86-64 "${tests}/shift.ll" -o shift-generic.s
+grep -q shlx shift-generic.s && fail "--cpu=x86-64 still used shlx" || pass "--cpu names the CPU code is generated for"
+
 expect_status 0 "emits an object" "${tool}" --emit=obj "${tests}/hello.ll" -o hello.o
 file hello.o | grep -q 'relocatable' && pass "the object is relocatable" || fail "hello.o is not an object"
 

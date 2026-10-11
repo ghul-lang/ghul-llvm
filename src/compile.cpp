@@ -96,7 +96,7 @@ std::unique_ptr<llvm::TargetMachine> target_machine(const Options &options) {
     // Executables are linked statically and not as position independent,
     // so code is generated for a fixed load address.
     return std::unique_ptr<llvm::TargetMachine>(target->createTargetMachine(
-        triple, options.cpu.empty() ? "generic" : options.cpu, "", target_options,
+        triple, options.cpu, "", target_options,
         llvm::Reloc::Static, std::nullopt, codegen_level(options.optimisation)));
 }
 

@@ -27,6 +27,7 @@ file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/libghul/include/ghul.h" abi_line
 string(REGEX REPLACE "^#define GHUL_ABI_VERSION ([0-9]+).*" "\\1" GHUL_ABI_VERSION "${abi_line}")
 set(GHUL_LLVM_TRIPLE "x86_64-unknown-linux-musl" CACHE STRING "the triple ghul-llvm generates code for")
 set(GHUL_LLVM_BACKEND "X86" CACHE STRING "the LLVM backend for that triple, as LLVM names it")
+set(GHUL_LLVM_CPU "x86-64-v3" CACHE STRING "the CPU code is generated for unless --cpu names another")
 
 # LLD's driver initialises every backend LLVM was built with, for link-time
 # optimisation, and LLVM's release is built with all of them. Each backend
@@ -69,6 +70,7 @@ target_compile_definitions(ghul-llvm PRIVATE
     __STDC_LIMIT_MACROS
     GHUL_LLVM_VERSION="${GHUL_LLVM_VERSION}"
     GHUL_LLVM_TRIPLE="${GHUL_LLVM_TRIPLE}"
+    GHUL_LLVM_CPU="${GHUL_LLVM_CPU}"
     GHUL_ABI_VERSION=${GHUL_ABI_VERSION}
 )
 
