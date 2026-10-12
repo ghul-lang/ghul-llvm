@@ -173,7 +173,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -212,6 +212,10 @@ check "a program that is not there is not found" 1 "${status}"
 status=0
 ./clone || status=$?
 check "a clone is a separate copy of the same kind, with its own identity" 0 "${status}"
+
+status=0
+./identity-hash-spread || status=$?
+check "identity hashes of objects of one size spread across a map's buckets" 0 "${status}"
 
 check "the process path is the executable, and the wall clock is set" \
     "$(printf '%s\nnow' "$(readlink -f ./process-path)")" \

@@ -55,8 +55,18 @@ void *$ghul_clone(const void *object) {
 
 int32_t $ghul_identity_hash(const void *object) {
     /* The collector never moves an object, so its address is its identity
-       for as long as it lives. The low bits are alignment and carry nothing. */
-    uintptr_t address = (uintptr_t)object >> 4;
+       for as long as it lives. Objects of one size sit at a fixed stride, so
+       their addresses share their low bits, and a map picks a bucket from
+       the low bits of the hash: the address is put through MurmurHash3's
+       64-bit finaliser, which leaves every bit of the result depending on
+       every bit of the address. */
+    uint64_t x = (uint64_t)(uintptr_t)object;
 
-    return (int32_t)(uint32_t)(address ^ (address >> 32));
+    x ^= x >> 33;
+    x *= UINT64_C(0xff51afd7ed558ccd);
+    x ^= x >> 33;
+    x *= UINT64_C(0xc4ceb9fe1a85ec53);
+    x ^= x >> 33;
+
+    return (int32_t)(uint32_t)x;
 }
