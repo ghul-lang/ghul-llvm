@@ -125,6 +125,9 @@ string objects when libghul asks.
   unwinding to the nearest landing pad (below). Where no frame has one, the
   exception is unhandled: libghul calls `$ghul_report_unhandled`, flushes
   output and exits with status 134, as a .NET process does.
+- `_Noreturn void $ghul_throw_null_reference(void)`: throws what
+  `$ghul_make_null_reference` makes, for a test for null that found one
+  (below).
 - `void *$ghul_caught(void *header)`: the exception a landing pad was entered
   for.
 - `$ghul_personality`: the personality routine, which only the unwinder
@@ -184,21 +187,21 @@ A read through a null reference throws the exception
 `$ghul_make_null_reference` makes, where the program defines it.
 
 - **Tested reads.** Generated code tests the reference and branches to a
-  block that throws, marking the branch so LLVM can fold the test into the
-  read:
+  block that calls `$ghul_throw_null_reference`, one call so the test adds
+  little code, marking the branch so LLVM can fold the test into the read:
   `br i1 %is_null, label %throw, label %read, !make.implicit !{}`, with the
   read first in `%read`. At `-O1` and above the test costs nothing: the read
   is left to fault, and the fault map LLVM writes records `%throw` as where it
   resumes. A throw from `%throw` reaches a landing pad in the same function
   as any other. A test LLVM cannot fold stays a compare and a branch.
 - **Untested reads.** A fault in the first 64KB at any other instruction
-  throws as though that instruction had called `$ghul_throw`: the exception
+  throws as though that instruction had called `$ghul_throw_null_reference`: the exception
   passes out of the faulting function to its callers. LLVM takes a read
   through null to be undefined, so whether it still happens after
   optimisation is not guaranteed; generated code tests every read through a
   reference that can be null.
-- **Anything else.** A fault further from null, or in a program that does not
-  define `$ghul_make_null_reference`, goes to the handler installed before
+- **Anything else.** A fault further from null, or in a program that neither
+  defines `$ghul_make_null_reference` nor calls `$ghul_throw_null_reference`, goes to the handler installed before
   libghul's, which ends the process with SIGSEGV.
 
 ### Host operations

@@ -36,9 +36,9 @@
 extern void *$ghul_make_null_reference(void) __attribute__((weak));
 
 /* Weak, so a program that throws nothing need not link the unwinder or
- * define $ghul_report_unhandled. A program that defines
- * $ghul_make_null_reference throws it, so has it. */
-extern _Noreturn void $ghul_throw(void *exception) __attribute__((weak));
+ * define $ghul_report_unhandled. A program that tests for null calls it,
+ * so has it. */
+extern _Noreturn void $ghul_throw_null_reference(void) __attribute__((weak));
 
 /* Bound .llvm_faultmaps; defined by ghul.ld, and absent from a link without it. */
 extern const uint8_t __ghul_faultmaps_start[] __attribute__((weak));
@@ -91,10 +91,6 @@ static uintptr_t resume_at(uintptr_t pc) {
     return 0;
 }
 
-_Noreturn void $libghul_throw_null_reference(void) {
-    $ghul_throw($ghul_make_null_reference());
-}
-
 /*
  * Entered with the faulting instruction's address plus one pushed as if it
  * were a call's return address, so the unwinder finds the faulting function
@@ -114,7 +110,7 @@ __asm__(
     "    movq %rsp, %rbp\n"
     "    .cfi_def_cfa_register %rbp\n"
     "    andq $-16, %rsp\n"
-    "    call \"$libghul_throw_null_reference\"\n"
+    "    call \"$ghul_throw_null_reference\"\n"
     "    ud2\n"
     "    .cfi_endproc\n"
     "    .size \"$libghul_null_dereference\", . - \"$libghul_null_dereference\"\n");
@@ -157,7 +153,7 @@ static void on_fault(int signal, siginfo_t *info, void *context) {
 }
 
 void $libghul_null_init(void) {
-    if (!$ghul_make_null_reference || !$ghul_throw) {
+    if (!$ghul_make_null_reference || !$ghul_throw_null_reference) {
         return;
     }
 

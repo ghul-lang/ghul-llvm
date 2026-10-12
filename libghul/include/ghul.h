@@ -122,6 +122,14 @@ int32_t $ghul_identity_hash(const void *object);
 _Noreturn void $ghul_throw(void *exception);
 
 /*
+ * Throws the exception $ghul_make_null_reference makes, as $ghul_throw
+ * does. Generated code calls it where a test for null finds one, so the
+ * test costs one call on its cold path; libghul calls it when a read through
+ * null faults.
+ */
+_Noreturn void $ghul_throw_null_reference(void);
+
+/*
  * The exception a landing pad was entered for, from the first value of its
  * landingpad instruction.
  */

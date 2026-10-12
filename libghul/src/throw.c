@@ -237,3 +237,10 @@ _Unwind_Reason_Code $ghul_personality(int version, _Unwind_Action actions, uint6
 
     return _URC_INSTALL_CONTEXT;
 }
+
+/* Defined by a program that tests for null; see null.c. */
+extern void *$ghul_make_null_reference(void) __attribute__((weak));
+
+_Noreturn __attribute__((cold, noinline)) void $ghul_throw_null_reference(void) {
+    $ghul_throw($ghul_make_null_reference ? $ghul_make_null_reference() : NULL);
+}

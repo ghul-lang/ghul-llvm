@@ -8,6 +8,7 @@
 
 declare void @say(ptr, i32)
 declare void @$ghul_throw(ptr)
+declare void @$ghul_throw_null_reference()
 declare ptr @$ghul_caught(ptr)
 declare i32 @$ghul_personality(...)
 
@@ -36,8 +37,7 @@ entry:
   br i1 %null, label %is_null, label %not_null, !make.implicit !0
 
 is_null:
-  %thrown = call ptr @$ghul_make_null_reference()
-  invoke void @$ghul_throw(ptr %thrown) to label %impossible unwind label %pad
+  invoke void @$ghul_throw_null_reference() to label %impossible unwind label %pad
 
 impossible:
   unreachable
