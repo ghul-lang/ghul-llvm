@@ -1,4 +1,4 @@
 {
     "abi": 4,
-    "minimum-compiler": "65.8.0"
+    "minimum-compiler": "66.0.0"
 }
