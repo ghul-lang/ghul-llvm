@@ -11,12 +11,17 @@ ghul-llvm [options] program.ll -L <library dir> -l<library> -o program
 
 1. Reads the input, as text IR or bitcode, and verifies it. Invalid IR is
    reported with LLVM's own message, and the tool exits with status 1.
-2. Optimises it with LLVM's default pipeline for the optimisation level
+2. When building an executable, links libghul, ghūl's native support
+   library, into the program's module. `libghul.a` is an archive of LLVM
+   bitcode, and its members are taken as a static linker takes an archive's:
+   those that define something the program, or an object linked beside it,
+   refers to other than weakly. Its functions are then optimised with the
+   program and inline where they are called.
+3. Optimises it with LLVM's default pipeline for the optimisation level
    (`-O2` unless told otherwise), or with a pipeline given by `--passes`.
-3. Generates an object for the target.
-4. Links it with LLD, statically, against the libraries it is given and
-   what ships with the tool: libghul (`libghul.a`), ghūl's native support
-   library; libtommath (`libtommath.a`) for large bigints; the Boehm garbage
+4. Generates an object for the target.
+5. Links it with LLD, statically, against the libraries it is given and
+   what ships with the tool: libtommath (`libtommath.a`) for large bigints; the Boehm garbage
    collector (`libgc.a`); LLVM's unwinder
    (`libunwind.a`); musl's start files and C library; and LLVM's compiler-rt
    builtins. Nothing is read from the system it runs on.

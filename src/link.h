@@ -4,7 +4,13 @@
 
 #include "llvm/ADT/StringRef.h"
 
+#include <string>
+
 namespace ghul_llvm {
+
+// The directory the C runtime and libghul are read from: the one --sysroot
+// names, or lib/<triple> beside the directory the executable is in.
+std::string sysroot_of(const Options &options, const char *argv0);
 
 // Links `object` with the options' objects, archives and libraries, and the
 // C runtime in the sysroot, into a statically linked executable at the

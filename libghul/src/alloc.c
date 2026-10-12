@@ -16,12 +16,14 @@ static void *checked(void *object) {
     return object;
 }
 
-void *$ghul_alloc(size_t size) {
+/* Always inlined, as every allocation goes through one of these two and each
+   is no more than the call it makes. */
+__attribute__((always_inline)) void *$ghul_alloc(size_t size) {
     /* GC_MALLOC answers zeroed memory. */
     return checked(GC_MALLOC(size));
 }
 
-void *$ghul_alloc_atomic(size_t size) {
+__attribute__((always_inline)) void *$ghul_alloc_atomic(size_t size) {
     /* GC_MALLOC_ATOMIC does not zero what it answers, and the program
        stores everything the object holds. */
     return checked(GC_MALLOC_ATOMIC(size));

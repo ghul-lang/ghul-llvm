@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
     llvm::SmallVector<char, 0> object;
 
-    if (!ghul_llvm::compile(options, object)) {
+    if (!ghul_llvm::compile(options, ghul_llvm::sysroot_of(options, argv[0]), object)) {
         return 1;
     }
 

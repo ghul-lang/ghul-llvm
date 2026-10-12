@@ -5,7 +5,7 @@
 # (128-bit division, for instance), the Boehm garbage collector, built
 # single-threaded against musl, LLVM's libunwind, which exceptions are
 # thrown through, and libtommath, which large bigints are computed with. This is what ships in the release archive's
-# lib/<triple> directory beside libghul.a.
+# lib/<triple> directory beside libghul.bc.
 #
 # Does nothing when the sysroot is already there.
 
