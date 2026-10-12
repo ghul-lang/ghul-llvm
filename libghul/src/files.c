@@ -200,6 +200,56 @@ void *$ghul_host_file_read(const uint16_t *chars, int32_t length) {
     return result;
 }
 
+int32_t $ghul_host_file_open_read(const uint16_t *chars, int32_t length) {
+    char *path = utf8_path(chars, length);
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+
+    if (fd < 0) {
+        last_error = code_for(errno, path);
+        free(path);
+        return -1;
+    }
+
+    free(path);
+
+    struct stat status;
+
+    if (fstat(fd, &status) == 0 && S_ISDIR(status.st_mode)) {
+        close(fd);
+        last_error = ACCESS_DENIED;
+        return -1;
+    }
+
+    return fd;
+}
+
+int32_t $ghul_host_file_read_into(int32_t descriptor, uint8_t *bytes, int32_t count, int32_t offset,
+                                 int32_t wanted) {
+    if (offset < 0 || wanted < 0 || offset > count || wanted > count - offset) {
+        last_error = IO_ERROR;
+        return -1;
+    }
+
+    for (;;) {
+        ssize_t got = read(descriptor, bytes + offset, (size_t)wanted);
+
+        if (got < 0 && errno == EINTR) {
+            continue;
+        }
+
+        if (got < 0) {
+            last_error = IO_ERROR;
+            return -1;
+        }
+
+        return (int32_t)got;
+    }
+}
+
+int32_t $ghul_host_file_close(int32_t descriptor) {
+    return close(descriptor) == 0 ? FILE_OK : IO_ERROR;
+}
+
 int32_t $ghul_host_file_write(const uint16_t *chars, int32_t length, const uint8_t *bytes,
                              int32_t count, bool append) {
     char *path = utf8_path(chars, length);

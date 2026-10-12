@@ -290,7 +290,7 @@ check "bigint digits are collected" 0 "${status}"
 # Files and directories on the real file system, in a directory of the
 # test's own. Codes: 0 done, 1 no file, 2 no directory, 3 denied, 4 I/O.
 mkdir files-test
-expected_files="$(printf '%s\n' "${scratch}" 2 0 0 0 1 "hello world" 0 replaced null 1 null 2 2 null 3 \
+expected_files="$(printf '%s\n' "${scratch}" 2 0 0 0 1 "hello world" 0 replaced 3 3 2 0 -1 0 1 3 null 1 null 2 2 null 3 \
     0 2 0 4 0 1 a.txt 1 p -2 4 0 0 2 \
     0 0 hello 0 4 0 0 2 1 0 0 \
     0 0 0 2 \

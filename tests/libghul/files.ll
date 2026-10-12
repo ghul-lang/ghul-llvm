@@ -14,6 +14,9 @@ declare ptr @$ghul_host_bigint_to_string(ptr)
 declare ptr @$ghul_host_file_current_directory()
 declare i32 @$ghul_host_file_kind(ptr, i32)
 declare ptr @$ghul_host_file_read(ptr, i32)
+declare i32 @$ghul_host_file_open_read(ptr, i32)
+declare i32 @$ghul_host_file_read_into(i32, ptr, i32, i32, i32)
+declare i32 @$ghul_host_file_close(i32)
 declare i32 @$ghul_host_file_last_error()
 declare i32 @$ghul_host_file_write(ptr, i32, ptr, i32, i1)
 declare i32 @$ghul_host_file_delete(ptr, i32)
@@ -107,6 +110,37 @@ read:
 
 failed:
   call void @say(ptr @null_line, i32 1)
+  %code = call i32 @$ghul_host_file_last_error()
+  call void @test_show_int(i32 %code)
+  ret void
+}
+
+; Reads the file in chunks of three into the middle of an eight-byte
+; buffer, a count a line, then a read past the buffer, then the close.
+; A file that cannot be opened prints the reason.
+define void @test_stream(ptr %path) {
+entry:
+  %buffer = alloca [256 x i16]
+  %bytes = alloca [8 x i8]
+  %length = call i32 @test_widen(ptr %path, ptr %buffer)
+  %fd = call i32 @$ghul_host_file_open_read(ptr %buffer, i32 %length)
+  %failed = icmp slt i32 %fd, 0
+  br i1 %failed, label %fail, label %loop
+
+loop:
+  %got = call i32 @$ghul_host_file_read_into(i32 %fd, ptr %bytes, i32 8, i32 2, i32 3)
+  call void @test_show_int(i32 %got)
+  %more = icmp sgt i32 %got, 0
+  br i1 %more, label %loop, label %done
+
+done:
+  %outside = call i32 @$ghul_host_file_read_into(i32 %fd, ptr %bytes, i32 8, i32 6, i32 3)
+  call void @test_show_int(i32 %outside)
+  %closed = call i32 @$ghul_host_file_close(i32 %fd)
+  call void @test_show_int(i32 %closed)
+  ret void
+
+fail:
   %code = call i32 @$ghul_host_file_last_error()
   call void @test_show_int(i32 %code)
   ret void
@@ -211,6 +245,11 @@ define i32 @$ghul_entry() {
   call void @test_read(ptr @a)
   call void @test_write(ptr @a, ptr @replaced, i1 false)
   call void @test_read(ptr @a)
+
+  ; reading as it is asked for: the file, a missing file, a directory
+  call void @test_stream(ptr @a)
+  call void @test_stream(ptr @missing)
+  call void @test_stream(ptr @root)
 
   ; failures: a missing file, a missing directory, a directory as a file
   call void @test_read(ptr @missing)

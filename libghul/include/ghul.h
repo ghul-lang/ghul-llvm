@@ -294,6 +294,18 @@ int32_t $ghul_host_file_kind(const uint16_t *path, int32_t length);
 void *$ghul_host_file_read(const uint16_t *path, int32_t length);
 int32_t $ghul_host_file_last_error(void);
 
+/*
+ * A file opened for reading as it is asked for, as a stream over it reads:
+ * open answers a descriptor, or -1 with the reason in file_last_error;
+ * read_into reads at most `wanted` bytes into `bytes` from `offset`,
+ * answering how many, 0 at the end of the file, or -1 with the reason in
+ * file_last_error; close answers 0, or a code.
+ */
+int32_t $ghul_host_file_open_read(const uint16_t *path, int32_t length);
+int32_t $ghul_host_file_read_into(int32_t descriptor, uint8_t *bytes, int32_t count, int32_t offset,
+                                 int32_t wanted);
+int32_t $ghul_host_file_close(int32_t descriptor);
+
 /* Replaces the file's content with `bytes`, or adds them to its end. */
 int32_t $ghul_host_file_write(const uint16_t *path, int32_t length, const uint8_t *bytes,
                              int32_t count, bool append);

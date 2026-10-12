@@ -249,7 +249,10 @@ A host operation's C signature follows from its declaration:
 | `host.file_current_directory` | `void *(void)` | |
 | `host.file_kind` | `int32_t (path)` | 0 nothing there, 1 a file, 2 a directory |
 | `host.file_read` | `void *(path)` | the whole file as `ubyte[]`, or `NULL` with the reason in `file_last_error` |
-| `host.file_last_error` | `int32_t (void)` | the code of the last `file_read` |
+| `host.file_last_error` | `int32_t (void)` | the code of the last failed `file_read`, `file_open_read` or `file_read_into` |
+| `host.file_open_read` | `int32_t (path)` | a descriptor reading the file as it is asked for, or -1 with the reason in `file_last_error` |
+| `host.file_read_into` | `int32_t (int32_t descriptor, bytes, int32_t offset, int32_t count)` | reads at most `count` bytes into `bytes` from `offset`: how many, 0 at the end, or -1 |
+| `host.file_close` | `int32_t (int32_t descriptor)` | |
 | `host.file_write` | `int32_t (path, bytes, bool append)` | replaces the content, or adds to its end |
 | `host.file_delete` | `int32_t (path)` | a file that is not there is not an error |
 | `host.file_rename` | `int32_t (from, to)` | a file or a directory; nothing may be at `to` already |
