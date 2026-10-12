@@ -154,9 +154,14 @@ bool set_target(llvm::Module &module, llvm::TargetMachine &machine) {
 
 // The collector's allocators, as the optimiser is to see them once libghul's
 // allocation functions are inlined into the program: each answers a fresh
-// object of the size it is given, or does not return. GC_malloc clears what
-// it answers; GC_malloc_atomic does not.
-void describe_allocator(llvm::Module &module, llvm::StringRef name, llvm::StringRef kind) {
+// object of the size it is given, or does not return. Neither is described
+// as clearing what it answers, although GC_malloc does. Told that an
+// allocation is cleared, LLVM may replace an object only a global refers to
+// with a static byte array of its own, placed without pointer alignment, where
+// the collector's root scan does not find the pointers stored in it. Nothing
+// needs the claim: the program stores every field of an object it allocates,
+// and libghul writes whatever it reads.
+void describe_allocator(llvm::Module &module, llvm::StringRef name) {
     llvm::Function *allocator = module.getFunction(name);
 
     if (!allocator || !allocator->isDeclaration()) {
@@ -166,9 +171,7 @@ void describe_allocator(llvm::Module &module, llvm::StringRef name, llvm::String
     llvm::LLVMContext &context = module.getContext();
 
     allocator->addFnAttr(llvm::Attribute::getWithAllocKind(
-        context, kind == "zeroed"
-                     ? llvm::AllocFnKind::Alloc | llvm::AllocFnKind::Zeroed
-                     : llvm::AllocFnKind::Alloc | llvm::AllocFnKind::Uninitialized));
+        context, llvm::AllocFnKind::Alloc | llvm::AllocFnKind::Uninitialized));
     allocator->addFnAttr("alloc-family", "ghul_gc");
     allocator->addFnAttr(llvm::Attribute::getWithAllocSizeArgs(context, 0, std::nullopt));
     allocator->addFnAttr(llvm::Attribute::NoUnwind);
@@ -359,8 +362,8 @@ bool link_libghul(const Options &options, llvm::Module &module, const std::strin
         }
     }
 
-    describe_allocator(module, "GC_malloc", "zeroed");
-    describe_allocator(module, "GC_malloc_atomic", "uninitialized");
+    describe_allocator(module, "GC_malloc");
+    describe_allocator(module, "GC_malloc_atomic");
 
     return true;
 }
