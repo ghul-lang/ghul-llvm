@@ -5,8 +5,9 @@
  *
  * Two directions:
  *
- * - The program defines $ghul_entry, $ghul_make_string, $ghul_make_bytes and
- *   $ghul_report_unhandled, which libghul calls.
+ * - The program defines $ghul_entry, $ghul_make_string, $ghul_make_bytes,
+ *   $ghul_report_unhandled and $ghul_make_null_reference, which libghul
+ *   calls.
  * - libghul defines main, $ghul_alloc, $ghul_alloc_atomic, $ghul_throw,
  *   $ghul_caught, $ghul_personality and one ghul_host_<operation> function per
  *   host operation the core library declares with
@@ -71,6 +72,14 @@ void *$ghul_make_bytes(const uint8_t *bytes, int32_t length);
  * message is laid out. A program that never throws need not define it.
  */
 void $ghul_report_unhandled(void *exception);
+
+/*
+ * Makes the exception a read through null throws. libghul calls it when a read
+ * through null faults, and throws what it answers, so the program raises the
+ * same exception it throws for null anywhere else. A program that does
+ * not define it ends on a read through null with SIGSEGV.
+ */
+void *$ghul_make_null_reference(void);
 
 /* --- Allocation -------------------------------------------------------- */
 

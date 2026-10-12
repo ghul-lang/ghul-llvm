@@ -13,6 +13,7 @@
 #include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/CodeGen.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
@@ -29,6 +30,17 @@ namespace {
 bool fail(const llvm::Twine &message) {
     llvm::errs() << "ghul-llvm: " << message << "\n";
     return false;
+}
+
+// LLVM has no API for the pass, only the command-line option that adds it to
+// the code generation pipeline at every level but -O0.
+void enable_implicit_null_checks() {
+    auto &registered = llvm::cl::getRegisteredOptions();
+    auto found = registered.find("enable-implicit-null-checks");
+
+    if (found != registered.end()) {
+        static_cast<llvm::cl::opt<bool> *>(found->second)->setValue(true);
+    }
 }
 
 bool write_file(const std::string &path, llvm::StringRef content) {
@@ -92,6 +104,12 @@ std::unique_ptr<llvm::TargetMachine> target_machine(const Options &options) {
     llvm::TargetOptions target_options;
     target_options.FunctionSections = true;
     target_options.DataSections = true;
+
+    // A test for null that generated code marks !make.implicit is folded,
+    // where it can be, into the read it guards: the read is left to fault,
+    // and the fault map records where the test would have branched to.
+    // libghul resumes there when the read faults.
+    enable_implicit_null_checks();
 
     // Executables are linked statically and not as position independent,
     // so code is generated for a fixed load address.

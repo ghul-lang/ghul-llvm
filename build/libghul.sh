@@ -42,4 +42,7 @@ done
 rm -f "${target}/libghul.a"
 ar rcsD "${target}/libghul.a" "${objects[@]}"
 
+# The linker script that keeps the fault map, read by libghul/src/null.c.
+cp "${root}/libghul/ghul.ld" "${target}/ghul.ld"
+
 echo "built ${target}/libghul.a"
