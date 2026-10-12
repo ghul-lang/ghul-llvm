@@ -16,7 +16,8 @@ used, and `.github/claude-review.md` for what to be careful of.
   library; `main.cpp` ties them together. `polly.cpp` is a stub explained in
   its own comment.
 - `libghul/` — libghul (`libghul.a`), ghūl's native support library: C,
-  built with musl-gcc.
+  built as an archive of LLVM bitcode with the release's clang against musl's headers, and
+  linked into each program's module before it is optimised.
   `libghul/include/ghul.h` declares the ABI that README.md describes.
 - `CMakeLists.txt` — builds `src/` against an unpacked LLVM release, and
   generates the stubs that keep every backend but the target's out of the

@@ -92,3 +92,28 @@ llvm_release() {
 
     touch "${llvm_prefix}/.unpacked"
 }
+
+# The compiler from the same release, which libghul is built with as
+# bitcode, so that ghul-llvm's LLVM reads it as its own. Unpacked apart
+# from the libraries, once.
+llvm_tools_prefix="${cache}/${LLVM_RELEASE}-tools"
+
+llvm_tools() {
+    if [ -f "${llvm_tools_prefix}/.unpacked" ]; then
+        return
+    fi
+
+    local archive
+    archive="$(fetch "${LLVM_URL}" "${LLVM_SHA256}")"
+
+    rm -rf "${llvm_tools_prefix}"
+    mkdir -p "${llvm_tools_prefix}"
+
+    zstd --long=31 -dc "${archive}" | tar -x -C "${llvm_tools_prefix}" --strip-components=1 \
+        --wildcards \
+        "${LLVM_RELEASE}/bin/clang" \
+        "${LLVM_RELEASE}/bin/clang-${LLVM_VERSION%%.*}" \
+        "${LLVM_RELEASE}/lib/clang/${LLVM_VERSION%%.*}/include/*"
+
+    touch "${llvm_tools_prefix}/.unpacked"
+}

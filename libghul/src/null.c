@@ -95,25 +95,22 @@ static uintptr_t resume_at(uintptr_t pc) {
  * Entered with the faulting instruction's address plus one pushed as if it
  * were a call's return address, so the unwinder finds the faulting function
  * as this frame's caller and looks up the faulting instruction itself.
+ *
+ * Naked rather than written as top-level assembly, so that it is linked into
+ * a program only with the handler that enters it. The compiler opens and
+ * closes its frame description.
  */
-void $libghul_null_dereference(void);
-
-__asm__(
-    "    .text\n"
-    "    .p2align 4\n"
-    "    .type \"$libghul_null_dereference\", @function\n"
-    "\"$libghul_null_dereference\":\n"
-    "    .cfi_startproc\n"
-    "    pushq %rbp\n"
-    "    .cfi_def_cfa_offset 16\n"
-    "    .cfi_offset %rbp, -16\n"
-    "    movq %rsp, %rbp\n"
-    "    .cfi_def_cfa_register %rbp\n"
-    "    andq $-16, %rsp\n"
-    "    call \"$ghul_throw_null_reference\"\n"
-    "    ud2\n"
-    "    .cfi_endproc\n"
-    "    .size \"$libghul_null_dereference\", . - \"$libghul_null_dereference\"\n");
+__attribute__((naked)) void $libghul_null_dereference(void) {
+    __asm__(
+        "    pushq %rbp\n"
+        "    .cfi_def_cfa_offset 16\n"
+        "    .cfi_offset %rbp, -16\n"
+        "    movq %rsp, %rbp\n"
+        "    .cfi_def_cfa_register %rbp\n"
+        "    andq $-16, %rsp\n"
+        "    call \"$ghul_throw_null_reference\"\n"
+        "    ud2\n");
+}
 
 static void pass_on(int signal, siginfo_t *info, void *context) {
     if (previous.sa_flags & SA_SIGINFO) {

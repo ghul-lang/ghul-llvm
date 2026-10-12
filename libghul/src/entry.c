@@ -11,8 +11,18 @@ extern char **environ;
 
 const int32_t $ghul_abi_4 = GHUL_ABI_VERSION;
 
+/* The collector calls this where it would otherwise answer null, so an
+   allocation either succeeds or ends the program, and the program may take
+   every allocation it is answered to be an object. */
+static void *out_of_memory(size_t size) {
+    (void)size;
+
+    $libghul_fail("Out of memory.\n");
+}
+
 int main(int argc, char **argv) {
     GC_INIT();
+    GC_set_oom_fn(out_of_memory);
 
     $libghul_null_init();
     $libghul_clock_init();
