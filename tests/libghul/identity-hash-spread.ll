@@ -5,7 +5,7 @@
 ; address's low bits would use a fraction of them. Exits 0 when the spread
 ; holds, or 1 when it does not.
 
-declare ptr @$ghul_alloc(ptr, i64)
+declare ptr @$ghul_alloc(i64)
 declare i32 @$ghul_identity_hash(ptr)
 
 @descriptor = private constant i64 7
@@ -19,7 +19,8 @@ entry:
 
 allocate:
   %i = phi i64 [ 0, %entry ], [ %i.next, %allocate ]
-  %object = call ptr @$ghul_alloc(ptr @descriptor, i64 128)
+  %object = call ptr @$ghul_alloc(i64 128)
+  store ptr @descriptor, ptr %object
   %slot = getelementptr [4096 x ptr], ptr %objects, i64 0, i64 %i
   store volatile ptr %object, ptr %slot
   %hash = call i32 @$ghul_identity_hash(ptr %object)

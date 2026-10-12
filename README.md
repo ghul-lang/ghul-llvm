@@ -69,10 +69,11 @@ only target so far.
 
 ## The libghul ABI
 
-**Version 3.** `ghul-llvm --abi-version` prints it, and a program can refer to
-`$ghul_abi_3`, which libghul defines, to fail to link against a libghul of any
-other ABI version. Version 3 put a `$` in front of every name on either side
-of the boundary; version 2 added exceptions that can be caught (the
+**Version 4.** `ghul-llvm --abi-version` prints it, and a program can refer to
+`$ghul_abi_4`, which libghul defines, to fail to link against a libghul of any
+other ABI version. Version 4 left an object's descriptor for the program to
+store, so the optimiser sees every store that initialises an object; version 3
+put a `$` in front of every name on either side of the boundary; version 2 added exceptions that can be caught (the
 landing-pad contract below, `$ghul_caught` and `$ghul_personality`); version 1
 treated every exception as unhandled. A change to anything below that a
 compiled program depends on raises it; adding an operation does not. `libghul/include/ghul.h` has the C
@@ -109,12 +110,12 @@ string objects when libghul asks.
 - `main`, which starts the collector, keeps the arguments and environment,
   calls `$ghul_entry` and returns its result. Standard output is flushed on
   every way out: returning, `exit`, and an unhandled exception.
-- `void *$ghul_alloc(const void *descriptor, size_t size)`: `size` bytes,
-  header included, from the collected heap, zeroed, with `descriptor` in the
-  first word. The collector scans it for pointers.
-- `void *$ghul_alloc_atomic(const void *descriptor, size_t size)`: the same,
-  for an object holding no pointers (strings, arrays of numbers, boxed
-  numbers), which the collector does not scan.
+- `void *$ghul_alloc(size_t size)`: `size` bytes, header included, from the
+  collected heap, zeroed. The collector scans it for pointers. The program
+  stores the object's descriptor in its first word.
+- `void *$ghul_alloc_atomic(size_t size)`: the same, for an object holding no
+  pointers (strings, arrays of numbers, boxed numbers), which the collector
+  does not scan, and not zeroed: the program stores everything it holds.
 - `void *$ghul_clone(const void *object)`: a shallow copy of the whole
   allocation, descriptor included, allocated as the same kind as the
   original, so a copy of an object the collector does not scan is not

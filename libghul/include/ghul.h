@@ -29,16 +29,17 @@
  * The ABI version. A change to anything in this header that a compiled
  * program depends on raises it.
  */
-#define GHUL_ABI_VERSION 3
+#define GHUL_ABI_VERSION 4
 
 /*
  * Defined by libghul, so a program can refer to it and fail to link
  * against a libghul of another ABI version rather than fail when it runs.
  * Version 2 added exceptions that a landing pad can catch; version 3 put a
  * `$` in front of every name on either side of the boundary, which no ghūl
- * identifier can contain.
+ * identifier can contain; version 4 left an object's descriptor for the
+ * program to store, so the optimiser sees every store that initialises one.
  */
-extern const int32_t $ghul_abi_3;
+extern const int32_t $ghul_abi_4;
 
 /* --- Defined by the program -------------------------------------------- */
 
@@ -85,17 +86,19 @@ void *$ghul_make_null_reference(void);
 
 /*
  * Allocates an object of `size` bytes, header included, from the garbage
- * collected heap. The memory is zeroed, then `descriptor` is stored in its
- * first word. The collector scans the object for pointers.
+ * collected heap, which the collector scans for pointers. The memory is
+ * zeroed, as the collector answers it; the program stores the object's
+ * descriptor in its first word.
  */
-void *$ghul_alloc(const void *descriptor, size_t size);
+void *$ghul_alloc(size_t size);
 
 /*
  * As $ghul_alloc, for an object that holds no pointers to the heap, such as
  * an array of numbers or a string's code units. The collector does not scan
- * it.
+ * it, and the memory is not zeroed: the program stores everything the object
+ * holds, its descriptor included.
  */
-void *$ghul_alloc_atomic(const void *descriptor, size_t size);
+void *$ghul_alloc_atomic(size_t size);
 
 /*
  * A shallow copy of `object`: every byte of its allocation, descriptor

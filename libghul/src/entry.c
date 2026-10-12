@@ -9,7 +9,7 @@
 
 extern char **environ;
 
-const int32_t $ghul_abi_3 = GHUL_ABI_VERSION;
+const int32_t $ghul_abi_4 = GHUL_ABI_VERSION;
 
 int main(int argc, char **argv) {
     GC_INIT();

@@ -8,7 +8,7 @@ declare double @$ghul_host_math_floor(double)
 declare double @$ghul_host_monotonic_milliseconds()
 declare i32 @$ghul_host_random_u32()
 
-@$ghul_abi_3 = external constant i32
+@$ghul_abi_4 = external constant i32
 
 define i32 @$ghul_entry() {
   %root = call double @$ghul_host_math_sqrt(double 16.0)
@@ -44,8 +44,8 @@ random:
   br i1 %differ, label %abi, label %fail_5
 
 abi:
-  %version = load i32, ptr @$ghul_abi_3
-  %abi_ok = icmp eq i32 %version, 3
+  %version = load i32, ptr @$ghul_abi_4
+  %abi_ok = icmp eq i32 %version, 4
   br i1 %abi_ok, label %pass, label %fail_6
 
 pass:

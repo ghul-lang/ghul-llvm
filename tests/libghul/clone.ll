@@ -4,8 +4,8 @@
 ; the original's while the original's stays the same. Exits 0 when every
 ; check holds, or with the number of the first that fails.
 
-declare ptr @$ghul_alloc(ptr, i64)
-declare ptr @$ghul_alloc_atomic(ptr, i64)
+declare ptr @$ghul_alloc(i64)
+declare ptr @$ghul_alloc_atomic(i64)
 declare ptr @$ghul_clone(ptr)
 declare i32 @$ghul_identity_hash(ptr)
 declare i32 @GC_get_kind_and_size(ptr, ptr)
@@ -72,7 +72,8 @@ fail3:
 
 define i32 @$ghul_entry() {
 entry:
-  %scanned = call ptr @$ghul_alloc(ptr @descriptor, i64 24)
+  %scanned = call ptr @$ghul_alloc(i64 24)
+  store ptr @descriptor, ptr %scanned
   %first = call i32 @check(ptr %scanned, i32 0)
   %first_ok = icmp eq i32 %first, 0
   br i1 %first_ok, label %atomic, label %done_first
@@ -81,7 +82,8 @@ done_first:
   ret i32 %first
 
 atomic:
-  %unscanned = call ptr @$ghul_alloc_atomic(ptr @descriptor, i64 24)
+  %unscanned = call ptr @$ghul_alloc_atomic(i64 24)
+  store ptr @descriptor, ptr %unscanned
   %second = call i32 @check(ptr %unscanned, i32 10)
   ret i32 %second
 }
