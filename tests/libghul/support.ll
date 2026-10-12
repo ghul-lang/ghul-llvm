@@ -6,7 +6,7 @@
 
 @string_descriptor = constant i8 0
 
-declare ptr @$ghul_alloc_atomic(ptr, i64)
+declare ptr @$ghul_alloc_atomic(i64)
 declare void @$ghul_host_write(ptr, i32, i32)
 declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)
 
@@ -14,7 +14,8 @@ define ptr @$ghul_make_string(ptr %chars, i32 %length) {
   %count = sext i32 %length to i64
   %bytes = shl i64 %count, 1
   %size = add i64 %bytes, 12
-  %string = call ptr @$ghul_alloc_atomic(ptr @string_descriptor, i64 %size)
+  %string = call ptr @$ghul_alloc_atomic(i64 %size)
+  store ptr @string_descriptor, ptr %string
   %length_field = getelementptr %string, ptr %string, i32 0, i32 1
   store i32 %length, ptr %length_field
   %chars_field = getelementptr %string, ptr %string, i32 0, i32 2
@@ -102,7 +103,8 @@ different:
 define ptr @$ghul_make_bytes(ptr %data, i32 %length) {
   %count = sext i32 %length to i64
   %size = add i64 %count, 12
-  %array = call ptr @$ghul_alloc_atomic(ptr @bytes_descriptor, i64 %size)
+  %array = call ptr @$ghul_alloc_atomic(i64 %size)
+  store ptr @bytes_descriptor, ptr %array
   %length_field = getelementptr %bytes, ptr %array, i32 0, i32 1
   store i32 %length, ptr %length_field
   %data_field = getelementptr %bytes, ptr %array, i32 0, i32 2
