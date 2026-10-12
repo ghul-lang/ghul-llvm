@@ -60,7 +60,7 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
     std::string sysroot = options.sysroot ? *options.sysroot : default_sysroot(argv0);
 
     const char *needed[] = {"crt1.o",  "crti.o", "crtn.o",
-                             "libghul.a", "libtommath.a", "libgc.a", "libunwind.a", "libc.a",
+                             "libghul.a", "ghul.ld", "libtommath.a", "libgc.a", "libunwind.a", "libc.a",
                              "libclang_rt.builtins.a"};
 
     for (const char *file : needed) {
@@ -155,6 +155,10 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
     args.push_back(in_sysroot("libclang_rt.builtins.a"));
     args.push_back("--end-group");
     args.push_back(in_sysroot("crtn.o"));
+
+    // Keeps the fault map --gc-sections would otherwise drop; see
+    // libghul/ghul.ld.
+    args.push_back(in_sysroot("ghul.ld"));
 
     if (options.verbose) {
         for (size_t i = 0; i < args.size(); ++i) {

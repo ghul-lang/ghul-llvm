@@ -5,8 +5,9 @@
  *
  * Two directions:
  *
- * - The program defines $ghul_entry, $ghul_make_string, $ghul_make_bytes and
- *   $ghul_report_unhandled, which libghul calls.
+ * - The program defines $ghul_entry, $ghul_make_string, $ghul_make_bytes,
+ *   $ghul_report_unhandled and $ghul_make_null_reference, which libghul
+ *   calls.
  * - libghul defines main, $ghul_alloc, $ghul_alloc_atomic, $ghul_throw,
  *   $ghul_caught, $ghul_personality and one ghul_host_<operation> function per
  *   host operation the core library declares with
@@ -72,6 +73,14 @@ void *$ghul_make_bytes(const uint8_t *bytes, int32_t length);
  */
 void $ghul_report_unhandled(void *exception);
 
+/*
+ * Makes the exception a read through null throws. libghul calls it when a read
+ * through null faults, and throws what it answers, so the program raises the
+ * same exception it throws for null anywhere else. A program that does
+ * not define it ends on a read through null with SIGSEGV.
+ */
+void *$ghul_make_null_reference(void);
+
 /* --- Allocation -------------------------------------------------------- */
 
 /*
@@ -111,6 +120,14 @@ int32_t $ghul_identity_hash(const void *object);
  * flushed, and the process exits with status 134, as a .NET process does.
  */
 _Noreturn void $ghul_throw(void *exception);
+
+/*
+ * Throws the exception $ghul_make_null_reference makes, as $ghul_throw
+ * does. Generated code calls it where a test for null finds one, so the
+ * test costs one call on its cold path; libghul calls it when a read through
+ * null faults.
+ */
+_Noreturn void $ghul_throw_null_reference(void);
 
 /*
  * The exception a landing pad was entered for, from the first value of its

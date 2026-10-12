@@ -173,7 +173,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files; do
+for program in output process process-path spawn spawn-missing clone lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -296,6 +296,35 @@ expected_files="$(printf '%s\n' "${scratch}" 2 0 0 0 1 "hello world" 0 replaced 
     0 0 0 2 \
     0 2 0)"
 check "files are written, read, listed and deleted as .NET does" "${expected_files}" "$(./files)"
+
+# Reads through null: a test folded into the read and a read nothing tested
+# both throw the program's null-reference exception, unoptimised and
+# optimised. Other faults end the process as they would without libghul.
+expect_status 0 "links the null test unoptimised" \
+    "${tool}" -O0 "${libghul_tests}/null.ll" support.o -o null-O0
+
+expected_nulls="$(printf 'read value\ncaught folded\nfinally\ncaught untested')"
+
+for build in null null-O0; do
+    status=0
+    output="$(./${build} 2>&1)" || status=$?
+    check "${build}: reads through null throw, to the same frame and to a caller" \
+        "0 ${expected_nulls}" "${status} ${output}"
+done
+
+if readelf -S null | grep -q llvm_faultmaps; then
+    pass "the fault map is kept"
+else
+    fail "the fault map was dropped from the executable"
+fi
+
+status=0
+sh -c './null-wild; exit $?' 2>/dev/null || status=$?
+check "a fault away from null is not a null reference" 139 "${status}"
+
+status=0
+sh -c './null-unhandled; exit $?' 2>/dev/null || status=$?
+check "a program that makes no null-reference exception faults as before" 139 "${status}"
 
 check "reports the ABI version" 3 "$("${tool}" --abi-version)"
 check "requirements.json declares the ABI the tool reports" \

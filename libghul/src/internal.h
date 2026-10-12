@@ -12,6 +12,7 @@
 void $libghul_arguments_init(int argc, char **argv);
 void $libghul_environment_init(char **environ);
 void $libghul_clock_init(void);
+void $libghul_null_init(void);
 
 /* Writes everything still buffered for standard output. */
 void $libghul_flush_output(void);
