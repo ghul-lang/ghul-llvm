@@ -173,7 +173,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow finalizer; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -252,8 +252,13 @@ status=0
 check "an unhandled exception exits with 134" 134 "${status}"
 check "output written before the exception is flushed" "before" "$(cat unhandled.out)"
 check "the program describes the exception, then the frames it was thrown through" \
-    "$(printf 'Unhandled exception. Test.Failure: it broke\n   at Test.thrower\n   at $ghul_entry')" \
+    "$(printf 'Unhandled exception. Test.Failure: it broke\n   at Test.thrower')" \
     "$(cat unhandled.err)"
+
+status=0
+./finalizer >finalizer.out || status=$?
+check "an unreachable object's finalizer runs once the collector has run" \
+    "0 finalized" "${status} $(cat finalizer.out)"
 
 status=0
 ./exit >exit.out || status=$?

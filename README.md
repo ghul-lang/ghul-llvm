@@ -122,6 +122,13 @@ string objects when libghul asks.
   scanned either.
 - `int32_t $ghul_identity_hash(const void *object)`: a hash of the object's
   identity, unchanged while it lives, since the collector never moves it.
+- `void $ghul_register_finalizer(void *object, void (*finalizer)(void *))`:
+  has the collector call `finalizer` with `object` once the object is
+  unreachable. Finalizers run in no particular order, so one may read what
+  its object refers to but not rely on another finalizer having run or not;
+  one runs inside the allocation that started the collection, so it must not
+  throw. Nothing finalizes an object still reachable when the process ends,
+  as on .NET.
 - `_Noreturn void $ghul_throw(void *exception)`: throws the exception,
   unwinding to the nearest landing pad (below). Where no frame has one, the
   exception is unhandled: libghul calls `$ghul_report_unhandled`, flushes
@@ -216,8 +223,9 @@ stream 2 after standard output is flushed. A fault is described in one line,
 otherwise; an exception by `$ghul_report_unhandled`. Then the frames follow,
 innermost first, one `   at <name>` line each, with ` in <file>:line <n>`
 where the program carries debug information. Frames inlined into another
-appear only with debug information. libghul's own frames and those outside
-`main` are left out, and past the hundredth frame the rest are counted.
+appear only with debug information. libghul's own frames, those outside
+`main`, and `$ghul_entry` where another frame is inside it are left out, and
+past the hundredth frame the rest are counted.
 
 The walk is libunwind's, from the frames still live when the report is made,
 seeded from the interrupted registers for a signal; the names come from the

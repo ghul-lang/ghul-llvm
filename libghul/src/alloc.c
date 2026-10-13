@@ -61,3 +61,15 @@ int32_t $ghul_identity_hash(const void *object) {
 
     return (int32_t)(uint32_t)x;
 }
+
+static void run_finalizer(void *object, void *finalizer) {
+    ((void (*)(void *))finalizer)(object);
+}
+
+void $ghul_register_finalizer(void *object, void (*finalizer)(void *object)) {
+    /* No order: an object's finalizer may run before or after those of
+       objects it refers to, which are still in memory when it runs, so it
+       may read them but must not rely on their having been finalized or
+       not. */
+    GC_REGISTER_FINALIZER_NO_ORDER(object, run_finalizer, (void *)finalizer, NULL, NULL);
+}
