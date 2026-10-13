@@ -67,9 +67,10 @@ static void run_finalizer(void *object, void *finalizer) {
 }
 
 void $ghul_register_finalizer(void *object, void (*finalizer)(void *object)) {
-    /* No order: an object's finalizer may run before or after those of
-       objects it refers to, which are still in memory when it runs, so it
-       may read them but must not rely on their having been finalized or
-       not. */
-    GC_REGISTER_FINALIZER_NO_ORDER(object, run_finalizer, (void *)finalizer, NULL, NULL);
+    /* Ordered, so everything the object refers to is kept in memory until
+       its finalizer has run, which the no-order kind does not do in a
+       collector built without Java-style finalization. A pointer from the
+       object to itself is ignored, so an object that refers to itself is
+       still finalized; finalizable objects in a longer cycle are not. */
+    GC_REGISTER_FINALIZER_IGNORE_SELF(object, run_finalizer, (void *)finalizer, NULL, NULL);
 }

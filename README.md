@@ -124,10 +124,10 @@ string objects when libghul asks.
   identity, unchanged while it lives, since the collector never moves it.
 - `void $ghul_register_finalizer(void *object, void (*finalizer)(void *))`:
   has the collector call `finalizer` with `object` once the object is
-  unreachable. Finalizers run in no particular order, so one may read what
-  its object refers to but not rely on another finalizer having run or not;
-  one runs inside the allocation that started the collection, so it must not
-  throw. Nothing finalizes an object still reachable when the process ends,
+  unreachable. Everything the object refers to is still in memory when it
+  runs, and the finalizers of finalizable objects it refers to run after it;
+  finalizable objects in a cycle are never finalized. A finalizer runs inside
+  the allocation that started the collection, so it must not throw. Nothing finalizes an object still reachable when the process ends,
   as on .NET.
 - `_Noreturn void $ghul_throw(void *exception)`: throws the exception,
   unwinding to the nearest landing pad (below). Where no frame has one, the
