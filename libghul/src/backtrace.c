@@ -152,7 +152,9 @@ static void write_frames(unw_cursor_t *cursor, int exact) {
 
         const char *name = state ? symbol_name(pc) : NULL;
 
-        if (is_outermost(name)) {
+        // The entry wrapper is shown only where everything was inlined into
+        // it, leaving no other frame.
+        if (is_outermost(name) || (named > 0 && name && !strcmp(name, "$ghul_entry"))) {
             break;
         }
 

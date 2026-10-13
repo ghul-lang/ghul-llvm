@@ -44,9 +44,11 @@ and the C runtime. Only `x86_64-unknown-linux-musl` exists so far.
   for a usage error. The compiler distinguishes them, so a change that
   reports a bad input as a usage error, or crashes instead of reporting, is a
   bug.
-- **The ABI.** A change to what `ghul.h` declares that compiled
+- **The ABI.** A change to something `ghul.h` already declares that compiled
   code depends on, without raising `GHUL_ABI_VERSION`, renaming
   `$ghul_abi_<n>` and updating the README's ABI section, is a finding.
+  Adding an operation is not such a change, as the README's ABI section says,
+  and does not raise the version.
 - **libghul is ignorant of object layout.** It handles strings only as
   UTF-16 code units and builds them through `$ghul_make_string`; a change that
   reads or writes the program's own objects is a finding.

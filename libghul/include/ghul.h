@@ -113,6 +113,16 @@ void *$ghul_clone(const void *object);
  */
 int32_t $ghul_identity_hash(const void *object);
 
+/*
+ * Has the collector call `finalizer` with `object` once the object is
+ * unreachable, before its memory is reused. Everything the object refers to
+ * is still in memory when it runs, and the finalizers of finalizable objects
+ * it refers to run after it; finalizable objects in a cycle are never
+ * finalized. A finalizer must not throw: it runs inside whatever allocation
+ * started the collection.
+ */
+void $ghul_register_finalizer(void *object, void (*finalizer)(void *object));
+
 /* --- Exceptions --------------------------------------------------------- */
 
 /*

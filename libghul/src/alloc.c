@@ -61,3 +61,16 @@ int32_t $ghul_identity_hash(const void *object) {
 
     return (int32_t)(uint32_t)x;
 }
+
+static void run_finalizer(void *object, void *finalizer) {
+    ((void (*)(void *))finalizer)(object);
+}
+
+void $ghul_register_finalizer(void *object, void (*finalizer)(void *object)) {
+    /* Ordered, so everything the object refers to is kept in memory until
+       its finalizer has run, which the no-order kind does not do in a
+       collector built without Java-style finalization. A pointer from the
+       object to itself is ignored, so an object that refers to itself is
+       still finalized; finalizable objects in a longer cycle are not. */
+    GC_REGISTER_FINALIZER_IGNORE_SELF(object, run_finalizer, (void *)finalizer, NULL, NULL);
+}

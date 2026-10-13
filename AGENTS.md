@@ -55,11 +55,13 @@ dependency on something only it has.
   never pass it `--sysroot`, a `-L` it was not given, or a library by bare
   name.
 - **Changing the ABI.** Anything in `ghul.h` that compiled code
-  depends on is the contract with the compiler's LLVM backend. A change to it
-  raises `GHUL_ABI_VERSION`, renames `$ghul_abi_<n>` to match,
+  depends on is the contract with the compiler's LLVM backend. A change to
+  something already there raises `GHUL_ABI_VERSION`, renames `$ghul_abi_<n>` to match,
   updates the README's ABI section, and sets `requirements.json`'s `abi`
   and its `minimum-compiler` to the first compiler release that emits the
-  new ABI, in the same change.
+  new ABI, in the same change. Adding an operation changes nothing a program
+  already built depends on, so it does not raise the version: a compiler that
+  calls the new operation declares the release that adds it as its floor.
 - **Unwind tables.** An exception unwinds through libghul's frames as
   well as the program's, so libghul is compiled with `-funwind-tables`
   and nothing in it may be built without them. `tests/libghul/exceptions.ll`
