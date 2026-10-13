@@ -28,7 +28,8 @@ cp "${out}/bin/ghul-llvm" "${staging}/bin/"
 cp "${out}/lib/${TRIPLE}"/* "${staging}/lib/${TRIPLE}/"
 
 # ghul-llvm and libghul, LLVM and LLD (in the tool, and compiler-rt in
-# every program it builds), musl and the collector (in every program), and
+# every program it builds), musl, the collector and libbacktrace (in every
+# program), and
 # the compression libraries
 # linked into the tool. The C++ runtime is GCC's, under the runtime library
 # exception, which asks for no notice.
@@ -37,6 +38,7 @@ cp "${root}/licenses/LLVM-LICENSE.TXT" "${staging}/licenses/LLVM-LICENSE.TXT"
 cp "${sysroot}/musl-COPYRIGHT" "${staging}/licenses/musl-COPYRIGHT"
 cp "${sysroot}/bdwgc-README.QUICK" "${staging}/licenses/bdwgc-README.QUICK"
 cp "${sysroot}/libtommath-LICENSE" "${staging}/licenses/libtommath-LICENSE"
+cp "${sysroot}/libbacktrace-LICENSE" "${staging}/licenses/libbacktrace-LICENSE"
 cp /usr/share/doc/libzstd-dev/copyright "${staging}/licenses/zstd-copyright"
 cp /usr/share/doc/zlib1g-dev/copyright "${staging}/licenses/zlib-copyright"
 

@@ -4,8 +4,9 @@
 # compiler-rt builtins for the helper routines code generation can call
 # (128-bit division, for instance), the Boehm garbage collector, built
 # single-threaded against musl, LLVM's libunwind, which exceptions are
-# thrown through, and libtommath, which large bigints are computed with. This is what ships in the release archive's
-# lib/<triple> directory beside libghul.a.
+# thrown through, libtommath, which large bigints are computed with, and
+# libbacktrace, which names the frames of a crash report. This is what ships
+# in the release archive's lib/<triple> directory beside libghul.a.
 #
 # Does nothing when the sysroot is already there.
 
@@ -138,7 +139,39 @@ for source in "${tommath_build}"/bn_*.c; do
 done
 
 ar rcsD "${sysroot}/libtommath.a" "${tommath_objects[@]}"
-cp "${unwind_source}/include/unwind.h" "${unwind_source}/include/__libunwind_config.h" "${sysroot}/include/"
+
+# libbacktrace, which libghul's crash reports name frames with. Built
+# against musl through its own configure, which then finds no compression
+# library to read compressed debug sections with: none is wanted. It reads
+# the executable it is in, so it is never linked into a program that does
+# not report a crash's backtrace, and it allocates with mmap, which a signal
+# handler may do.
+backtrace_archive="$(fetch "${LIBBACKTRACE_URL}" "${LIBBACKTRACE_SHA256}")"
+backtrace_build="${work}/libbacktrace-${LIBBACKTRACE_COMMIT}"
+backtrace_staging="${work}/libbacktrace-install"
+
+rm -rf "${backtrace_build}" "${backtrace_staging}"
+mkdir -p "${backtrace_build}"
+tar -xzf "${backtrace_archive}" -C "${backtrace_build}" --strip-components=1
+
+(
+    cd "${backtrace_build}"
+    CC="${musl_prefix}/bin/musl-gcc" CFLAGS="-O2 -fno-pie -funwind-tables -ffunction-sections -fdata-sections" \
+        LDFLAGS="-static -no-pie" \
+        ./configure --prefix="${backtrace_staging}" --disable-shared --enable-static --with-pic=no \
+        >/dev/null
+    make -j "${jobs}" libbacktrace.la >/dev/null
+    mkdir -p "${backtrace_staging}"
+    cp .libs/libbacktrace.a "${backtrace_staging}/"
+    cp backtrace.h "${backtrace_staging}/"
+    cp LICENSE "${backtrace_staging}/"
+)
+
+cp "${backtrace_staging}/libbacktrace.a" "${sysroot}/libbacktrace.a"
+cp "${backtrace_staging}/backtrace.h" "${sysroot}/include/"
+cp "${backtrace_staging}/LICENSE" "${sysroot}/libbacktrace-LICENSE"
+rm -rf "${backtrace_build}" "${backtrace_staging}"
+cp "${unwind_source}/include/unwind.h" "${unwind_source}/include/libunwind.h" "${unwind_source}/include/__libunwind_config.h" "${sysroot}/include/"
 cp "${unwind_source}/include/"unwind_*.h "${sysroot}/include/"
 cp "${tommath_build}/tommath.h" "${sysroot}/include/"
 cp "${tommath_build}/LICENSE" "${sysroot}/libtommath-LICENSE"

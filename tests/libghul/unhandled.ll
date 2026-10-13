@@ -1,5 +1,7 @@
-; Writes a line, then throws an exception nothing catches. libghul has
-; the program describe it, flushes the line, and exits with status 134.
+; Writes a line, then throws an exception nothing catches, from a function
+; the entry calls. libghul has the program describe it, writes the frames
+; the exception was thrown through, flushes the line, and exits with status
+; 134.
 
 declare void @say(ptr, i32)
 declare void @$ghul_throw(ptr)
@@ -13,8 +15,13 @@ define void @$ghul_report_unhandled(ptr %exception) {
   ret void
 }
 
+define internal void @Test.thrower() noinline {
+  call void @$ghul_throw(ptr @exception)
+  unreachable
+}
+
 define i32 @$ghul_entry() {
   call void @say(ptr @before, i32 1)
-  call void @$ghul_throw(ptr @exception)
+  call void @Test.thrower()
   unreachable
 }

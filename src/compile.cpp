@@ -214,6 +214,19 @@ bool compile(const Options &options, llvm::SmallVectorImpl<char> &object) {
         return fail(options.input + " is not valid IR");
     }
 
+    // Every function gets an unwind table, including those that cannot
+    // throw, so a crash report can walk the stack through any frame. The
+    // tables are data beside the code and change no instruction.
+    if (module->getUwtable() == llvm::UWTableKind::None) {
+        module->setUwtable(llvm::UWTableKind::Async);
+    }
+
+    for (llvm::Function &function : *module) {
+        if (!function.isDeclaration()) {
+            function.setUWTableKind(llvm::UWTableKind::Async);
+        }
+    }
+
     auto machine = target_machine(options);
 
     if (!machine || !set_target(*module, *machine) || !optimise(options, *module, *machine)) {

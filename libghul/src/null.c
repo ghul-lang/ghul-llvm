@@ -14,16 +14,21 @@
  * $libghul_null_dereference, which throws from there, so the exception
  * unwinds out of the faulting function to its callers.
  *
- * Every other fault, and every fault in a program that does not define
- * $ghul_make_null_reference, goes to the handler installed before this one,
- * which by default ends the process.
+ * Every other fault, every fault in a program that does not define
+ * $ghul_make_null_reference, and a bus error, an arithmetic fault or an
+ * illegal instruction, is reported, with a backtrace, after standard output
+ * is flushed, and then goes to the handler installed before this one, which
+ * by default ends the process with the signal. The handler runs on a stack
+ * of its own, so the stack running out is reported too.
  */
 
 #include "internal.h"
 
 #include <signal.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <ucontext.h>
+#include <unistd.h>
 
 /* Where a folded test's read can fault: LLVM folds only offsets below this. */
 #define FOLDED_REGION 4096
@@ -44,7 +49,7 @@ extern _Noreturn void $ghul_throw_null_reference(void) __attribute__((weak));
 extern const uint8_t __ghul_faultmaps_start[] __attribute__((weak));
 extern const uint8_t __ghul_faultmaps_end[] __attribute__((weak));
 
-static struct sigaction previous;
+
 
 #define READ(type, p) ({ type value; memcpy(&value, (p), sizeof value); (p) += sizeof value; value; })
 
@@ -115,25 +120,120 @@ __asm__(
     "    .cfi_endproc\n"
     "    .size \"$libghul_null_dereference\", . - \"$libghul_null_dereference\"\n");
 
+/* The handler installed before this one, for each signal handled here. */
+static struct sigaction previous[NSIG];
+
+/*
+ * Where the handler runs: a stack of its own, so a fault that is the stack
+ * running out can still be reported. Reserved, not committed, until used.
+ */
+#define SIGNAL_STACK_SIZE (512 * 1024)
+
+static const int fatal_signals[] = {SIGSEGV, SIGBUS, SIGFPE, SIGILL};
+
 static void pass_on(int signal, siginfo_t *info, void *context) {
-    if (previous.sa_flags & SA_SIGINFO) {
-        previous.sa_sigaction(signal, info, context);
-    } else if (previous.sa_handler == SIG_DFL || previous.sa_handler == SIG_IGN) {
+    struct sigaction *before = &previous[signal];
+
+    if (before->sa_flags & SA_SIGINFO) {
+        before->sa_sigaction(signal, info, context);
+    } else if (before->sa_handler == SIG_DFL || before->sa_handler == SIG_IGN) {
         /* Returning re-runs the faulting instruction, which now ends the process. */
         struct sigaction standard = {.sa_handler = SIG_DFL};
         sigemptyset(&standard.sa_mask);
         sigaction(signal, &standard, NULL);
     } else {
-        previous.sa_handler(signal);
+        before->sa_handler(signal);
     }
+}
+
+static void write_text(const char *text) {
+    size_t length = strlen(text);
+
+    while (length > 0) {
+        ssize_t written = write(2, text, length);
+
+        if (written <= 0) {
+            return;
+        }
+
+        text += written;
+        length -= (size_t)written;
+    }
+}
+
+static void write_address(uintptr_t address) {
+    char digits[19] = "0x";
+    int shift = 60;
+
+    while (shift > 0 && !((address >> shift) & 0xF)) {
+        shift -= 4;
+    }
+
+    size_t at = 2;
+
+    for (; shift >= 0; shift -= 4) {
+        digits[at++] = "0123456789abcdef"[(address >> shift) & 0xF];
+    }
+
+    digits[at] = 0;
+    write_text(digits);
+}
+
+/*
+ * A fault within this distance below the stack pointer, or a little above
+ * it, is the stack running out: the guard page under the stack is hit by a
+ * push or a store into a new frame.
+ */
+#define OVERFLOW_REACH (1024 * 1024)
+
+static void report(int signal, uintptr_t address, uintptr_t sp, void *context) {
+    static volatile sig_atomic_t reporting;
+
+    if (reporting) {
+        return;
+    }
+
+    reporting = 1;
+
+    $libghul_flush_output();
+
+    if (signal == SIGSEGV && address <= sp + 4096 && address + OVERFLOW_REACH >= sp) {
+        write_text("Stack overflow.\n");
+    } else {
+        switch (signal) {
+        case SIGSEGV:
+            write_text("Fatal error. SIGSEGV: invalid memory access at address ");
+            write_address(address);
+            break;
+        case SIGBUS:
+            write_text("Fatal error. SIGBUS: bus error at address ");
+            write_address(address);
+            break;
+        case SIGFPE:
+            write_text("Fatal error. SIGFPE: arithmetic fault");
+            break;
+        default:
+            write_text("Fatal error. SIGILL: illegal instruction");
+            break;
+        }
+
+        write_text("\n");
+    }
+
+    $libghul_write_signal_backtrace(context);
 }
 
 static void on_fault(int signal, siginfo_t *info, void *context) {
     greg_t *registers = ((ucontext_t *)context)->uc_mcontext.gregs;
     uintptr_t address = (uintptr_t)info->si_addr;
     uintptr_t pc = (uintptr_t)registers[REG_RIP];
+    uintptr_t sp = (uintptr_t)registers[REG_RSP];
 
-    if (!$ghul_make_null_reference || address >= NULL_REGION) {
+    int is_null = signal == SIGSEGV && $ghul_make_null_reference && $ghul_throw_null_reference &&
+                  address < NULL_REGION;
+
+    if (!is_null) {
+        report(signal, address, sp, context);
         pass_on(signal, info, context);
         return;
     }
@@ -145,19 +245,30 @@ static void on_fault(int signal, siginfo_t *info, void *context) {
         return;
     }
 
-    uintptr_t *stack = (uintptr_t *)registers[REG_RSP];
+    uintptr_t *stack = (uintptr_t *)sp;
     *--stack = pc + 1;
 
     registers[REG_RSP] = (greg_t)stack;
     registers[REG_RIP] = (greg_t)(uintptr_t)$libghul_null_dereference;
 }
 
-void $libghul_null_init(void) {
-    if (!$ghul_make_null_reference || !$ghul_throw_null_reference) {
-        return;
+void $libghul_fault_init(void) {
+    void *signal_stack = mmap(NULL, SIGNAL_STACK_SIZE, PROT_READ | PROT_WRITE,
+                              MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+
+    int flags = SA_SIGINFO;
+
+    if (signal_stack != MAP_FAILED) {
+        stack_t alternate = {.ss_sp = signal_stack, .ss_size = SIGNAL_STACK_SIZE};
+
+        if (sigaltstack(&alternate, NULL) == 0) {
+            flags |= SA_ONSTACK;
+        }
     }
 
-    struct sigaction handler = {.sa_sigaction = on_fault, .sa_flags = SA_SIGINFO};
-    sigemptyset(&handler.sa_mask);
-    sigaction(SIGSEGV, &handler, &previous);
+    for (size_t i = 0; i < sizeof fatal_signals / sizeof fatal_signals[0]; i++) {
+        struct sigaction handler = {.sa_sigaction = on_fault, .sa_flags = flags};
+        sigemptyset(&handler.sa_mask);
+        sigaction(fatal_signals[i], &handler, &previous[fatal_signals[i]]);
+    }
 }

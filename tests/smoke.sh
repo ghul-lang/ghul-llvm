@@ -173,7 +173,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -251,8 +251,9 @@ status=0
 ./unhandled >unhandled.out 2>unhandled.err || status=$?
 check "an unhandled exception exits with 134" 134 "${status}"
 check "output written before the exception is flushed" "before" "$(cat unhandled.out)"
-check "the program describes the exception" \
-    "Unhandled exception. Test.Failure: it broke" "$(cat unhandled.err)"
+check "the program describes the exception, then the frames it was thrown through" \
+    "$(printf 'Unhandled exception. Test.Failure: it broke\n   at Test.thrower\n   at $ghul_entry')" \
+    "$(cat unhandled.err)"
 
 status=0
 ./exit >exit.out || status=$?
@@ -277,7 +278,8 @@ status=0
 ./escaped >escaped.out 2>escaped.err || status=$?
 check "an exception that passes every landing pad is unhandled, with 134" 134 "${status}"
 check "the landing pads it passed ran first" "$(printf 'catch: pass\nfinally')" "$(cat escaped.out)"
-check "and it is reported" "Unhandled exception. Test.Escaped: got out" "$(cat escaped.err)"
+check "and it is reported, with the frame it was thrown from" \
+    "$(printf 'Unhandled exception. Test.Escaped: got out\n   at $ghul_entry')" "$(cat escaped.err)"
 
 # Every bigint operation, against what the Wasm target's loader answers for
 # the same operations.
@@ -327,8 +329,21 @@ else
 fi
 
 status=0
-sh -c './null-wild; exit $?' 2>/dev/null || status=$?
+sh -c './null-wild 2>null-wild.err; exit $?' 2>/dev/null || status=$?
 check "a fault away from null is not a null reference" 139 "${status}"
+check "a fault away from null is reported, with the frame it happened in" \
+    "$(printf 'Fatal error. SIGSEGV: invalid memory access at address 0x10000000000\n   at $ghul_entry')" \
+    "$(head -n 2 null-wild.err)"
+
+status=0
+sh -c './overflow >overflow.out 2>overflow.err; exit $?' 2>/dev/null || status=$?
+check "a stack that runs out ends the process with the signal" 139 "${status}"
+check "output written before the stack runs out is flushed" "before" "$(cat overflow.out)"
+check "the stack running out is reported, with the frames" \
+    "$(printf 'Stack overflow.\n   at Test.deep\n   at Test.deep')" \
+    "$(head -n 3 overflow.err)"
+check "frames past the first hundred are counted, not written" \
+    1 "$(grep -c 'more frames$' overflow.err)"
 
 status=0
 sh -c './null-unhandled; exit $?' 2>/dev/null || status=$?

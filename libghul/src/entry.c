@@ -14,7 +14,7 @@ const int32_t $ghul_abi_4 = GHUL_ABI_VERSION;
 int main(int argc, char **argv) {
     GC_INIT();
 
-    $libghul_null_init();
+    $libghul_fault_init();
     $libghul_clock_init();
     $libghul_arguments_init(argc, argv);
     $libghul_environment_init(environ);
