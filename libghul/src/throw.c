@@ -45,6 +45,7 @@ _Noreturn void $ghul_throw(void *exception) {
     /* The raise returns only when no frame will handle the exception. */
     $libghul_flush_output();
     $ghul_report_unhandled(exception);
+    $libghul_write_backtrace();
     $libghul_flush_output();
 
     _exit(LIBGHUL_FAILURE_STATUS);

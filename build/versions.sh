@@ -41,3 +41,11 @@ LIBTOMMATH_URL=https://github.com/libtom/libtommath/releases/download/v${LIBTOMM
 BDWGC_VERSION=8.2.12
 BDWGC_SHA256=42e5194ad06ab6ffb806c83eb99c03462b495d979cda782f3c72c08af833cd4e
 BDWGC_URL=https://github.com/ivmai/bdwgc/releases/download/v${BDWGC_VERSION}/gc-${BDWGC_VERSION}.tar.gz
+
+# The stack walker's symbolizer: names each frame of a backtrace from the
+# executable's own symbol table, and gives its file and line where the
+# program was built with debug information. Pinned by commit, since the
+# project makes no releases.
+LIBBACKTRACE_COMMIT=0b9b49cf4a2c9229fc052d6716e1528b2f23e91a
+LIBBACKTRACE_SHA256=fabcb6868b3d09734d4c537637dacac0bf8c9aa28e07486de5c6ce2eb749d413
+LIBBACKTRACE_URL=https://github.com/ianlancetaylor/libbacktrace/archive/${LIBBACKTRACE_COMMIT}.tar.gz

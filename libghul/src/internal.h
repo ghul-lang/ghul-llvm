@@ -12,7 +12,12 @@
 void $libghul_arguments_init(int argc, char **argv);
 void $libghul_environment_init(char **environ);
 void $libghul_clock_init(void);
-void $libghul_null_init(void);
+void $libghul_fault_init(void);
+
+/* Write the stack, innermost frame first, to standard error: from the caller,
+ * or from the registers a signal handler was handed. */
+void $libghul_write_backtrace(void);
+void $libghul_write_signal_backtrace(void *signal_context);
 
 /* Writes everything still buffered for standard output. */
 void $libghul_flush_output(void);

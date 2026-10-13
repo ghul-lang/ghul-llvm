@@ -164,7 +164,8 @@ generated code decides whether that landing pad handles it.
   by the unwinder with `abort`, before libghul can report it.
 - **Unhandled.** An exception with no landing pad left is reported through
   `$ghul_report_unhandled` from inside `$ghul_throw`, so the frames it was
-  thrown from are still there; the process then exits with status 134.
+  thrown from are still there. libghul then writes those frames, as
+  described under "Crash reports", and the process exits with status 134.
 
 ```llvm
 define void @f() personality ptr @$ghul_personality {
@@ -202,8 +203,29 @@ A read through a null reference throws the exception
   optimisation is not guaranteed; generated code tests every read through a
   reference that can be null.
 - **Anything else.** A fault further from null, or in a program that neither
-  defines `$ghul_make_null_reference` nor calls `$ghul_throw_null_reference`, goes to the handler installed before
-  libghul's, which ends the process with SIGSEGV.
+  defines `$ghul_make_null_reference` nor calls `$ghul_throw_null_reference`, is
+  reported as described under "Crash reports" and then goes to the handler
+  installed before libghul's, which ends the process with SIGSEGV.
+
+### Crash reports
+
+An unhandled exception, a fault that is not a read through null, a bus
+error, an arithmetic fault and an illegal instruction are reported on
+stream 2 after standard output is flushed. A fault is described in one line,
+`Stack overflow.` where the stack ran out and `Fatal error. <SIGNAL>: <what>`
+otherwise; an exception by `$ghul_report_unhandled`. Then the frames follow,
+innermost first, one `   at <name>` line each, with ` in <file>:line <n>`
+where the program carries debug information. Frames inlined into another
+appear only with debug information. libghul's own frames and those outside
+`main` are left out, and past the hundredth frame the rest are counted.
+
+The walk is libunwind's, from the frames still live when the report is made,
+seeded from the interrupted registers for a signal; the names come from the
+executable's own symbol table and debug information, read by libbacktrace.
+Nothing of it runs before a report. The handler runs on a stack of its own,
+so a stack that runs out is reported too, and ghul-llvm gives every function
+an unwind table so that the walk can pass through any frame. A fault ends
+the process with its signal, as it would without libghul.
 
 ### Host operations
 
@@ -316,7 +338,7 @@ build/docker.sh build/package.sh   # the release archive, into dist/
 tests/smoke.sh                     # checks the build in out/
 ```
 
-The versions of LLVM, musl, the collector and libtommath, and their checksums,
+The versions of LLVM, musl, the collector, libtommath and libbacktrace, and their checksums,
 are pinned in `build/versions.sh`. `GHUL_LLVM_CACHE` moves the cache, so several
 checkouts can share one copy of LLVM's release.
 
@@ -324,6 +346,6 @@ checkouts can share one copy of LLVM's release.
 
 ghul-llvm and libghul are MIT licensed. The release archive also carries
 LLVM and LLD (Apache 2.0 with LLVM exceptions), musl (MIT), the Boehm
-collector (MIT-style), libtommath (public domain), zlib and zstd; their licences are in its `licenses/`
-directory. Of those, only musl, the collector, libunwind, libtommath and the compiler-rt
+collector (MIT-style), libtommath (public domain), libbacktrace (BSD), zlib and zstd; their licences are in its `licenses/`
+directory. Of those, only musl, the collector, libunwind, libtommath, libbacktrace and the compiler-rt
 builtins are linked into the programs ghul-llvm builds.
