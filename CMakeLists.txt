@@ -25,9 +25,24 @@ set(GHUL_LLVM_VERSION "${version_file}" CACHE STRING "the version ghul-llvm repo
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/libghul/include/ghul.h" abi_line
     REGEX "^#define GHUL_ABI_VERSION ")
 string(REGEX REPLACE "^#define GHUL_ABI_VERSION ([0-9]+).*" "\\1" GHUL_ABI_VERSION "${abi_line}")
-set(GHUL_LLVM_TRIPLE "x86_64-unknown-linux-musl" CACHE STRING "the triple ghul-llvm generates code for")
-set(GHUL_LLVM_BACKEND "X86" CACHE STRING "the LLVM backend for that triple, as LLVM names it")
-set(GHUL_LLVM_CPU "x86-64-v3" CACHE STRING "the CPU code is generated for unless --cpu names another")
+# The triple, backend and default CPU the build generates code for default to
+# the machine it is built on; a value given on the command line wins. The
+# backend is the name LLVM registers that triple's target under, and each
+# architecture names a default CPU that is broadly representative without
+# pinning one machine.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
+    set(_triple "aarch64-unknown-linux-musl")
+    set(_backend "AArch64")
+    set(_cpu "cortex-a72")
+else()
+    set(_triple "x86_64-unknown-linux-musl")
+    set(_backend "X86")
+    set(_cpu "x86-64-v3")
+endif()
+
+set(GHUL_LLVM_TRIPLE "${_triple}" CACHE STRING "the triple ghul-llvm generates code for")
+set(GHUL_LLVM_BACKEND "${_backend}" CACHE STRING "the LLVM backend for that triple, as LLVM names it")
+set(GHUL_LLVM_CPU "${_cpu}" CACHE STRING "the CPU code is generated for unless --cpu names another")
 
 # LLD's driver initialises every backend LLVM was built with, for link-time
 # optimisation, and LLVM's release is built with all of them. Each backend
@@ -71,6 +86,8 @@ target_compile_definitions(ghul-llvm PRIVATE
     GHUL_LLVM_VERSION="${GHUL_LLVM_VERSION}"
     GHUL_LLVM_TRIPLE="${GHUL_LLVM_TRIPLE}"
     GHUL_LLVM_CPU="${GHUL_LLVM_CPU}"
+    GHUL_LLVM_BACKEND="${GHUL_LLVM_BACKEND}"
+    GHUL_LLVM_BACKEND_ID=${GHUL_LLVM_BACKEND}
     GHUL_ABI_VERSION=${GHUL_ABI_VERSION}
 )
 

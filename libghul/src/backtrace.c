@@ -201,14 +201,16 @@ void $libghul_write_backtrace(void) {
 }
 
 void $libghul_write_signal_backtrace(void *signal_context) {
-    greg_t *registers = ((ucontext_t *)signal_context)->uc_mcontext.gregs;
-
     unw_context_t context;
     unw_cursor_t cursor;
 
     if (unw_getcontext(&context) != 0 || unw_init_local(&cursor, &context) != 0) {
         return;
     }
+
+#if defined(__x86_64__)
+
+    greg_t *registers = ((ucontext_t *)signal_context)->uc_mcontext.gregs;
 
     static const struct {
         int unwind;
@@ -231,6 +233,35 @@ void $libghul_write_signal_backtrace(void *signal_context) {
     if (unw_set_reg(&cursor, UNW_REG_IP, (unw_word_t)registers[REG_RIP]) != 0) {
         return;
     }
+
+#elif defined(__aarch64__)
+
+    /* musl's mcontext on arm64 is struct sigcontext: the 31 general
+     * registers in regs[], then sp and pc separately. libunwind numbers
+     * x0..x30 as UNW_AARCH64_X0 + n, which covers fp (x29) and lr (x30). */
+    mcontext_t *m = &((ucontext_t *)signal_context)->uc_mcontext;
+
+    for (int i = 0; i <= 30; i++) {
+        unw_set_reg(&cursor, UNW_AARCH64_X0 + i, (unw_word_t)m->regs[i]);
+    }
+
+    unw_set_reg(&cursor, UNW_REG_SP, (unw_word_t)m->sp);
+
+    /* Last, since setting it looks up the frame the address is in. The
+     * unwinder takes the frame for a call's and looks its rules up at the
+     * address before this one, which for a fault in a prologue is the rule
+     * from before the stack was adjusted. One past the faulting instruction
+     * makes it look up the faulting instruction's own. */
+    if (unw_set_reg(&cursor, UNW_REG_IP, (unw_word_t)m->pc + 1) != 0) {
+        return;
+    }
+
+    write_frames(&cursor, 0);
+    return;
+
+#else
+#error "no signal register map for this architecture"
+#endif
 
     write_frames(&cursor, 1);
 }

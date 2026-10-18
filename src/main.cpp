@@ -23,12 +23,18 @@ int main(int argc, char **argv) {
 
     // Only the target this build generates code for is initialised. LLVM's
     // release libraries carry every backend, and initialising one is what
-    // makes the linker pull it into the executable.
-    LLVMInitializeX86TargetInfo();
-    LLVMInitializeX86Target();
-    LLVMInitializeX86TargetMC();
-    LLVMInitializeX86AsmParser();
-    LLVMInitializeX86AsmPrinter();
+    // makes the linker pull it into the executable. The build defines
+    // GHUL_LLVM_BACKEND_ID as the backend's name unquoted, so a token paste
+    // names the one real initialiser the stubs do not shadow.
+#define GHUL_LLVM_CONCAT(a, b) GHUL_LLVM_CONCAT2(a, b)
+#define GHUL_LLVM_CONCAT2(a, b) a##b
+#define GHUL_LLVM_INITIALIZE(part) GHUL_LLVM_CONCAT(LLVMInitialize, GHUL_LLVM_CONCAT(GHUL_LLVM_BACKEND_ID, part))
+
+    GHUL_LLVM_INITIALIZE(TargetInfo)();
+    GHUL_LLVM_INITIALIZE(Target)();
+    GHUL_LLVM_INITIALIZE(TargetMC)();
+    GHUL_LLVM_INITIALIZE(AsmParser)();
+    GHUL_LLVM_INITIALIZE(AsmPrinter)();
 
     llvm::SmallVector<char, 0> object;
 

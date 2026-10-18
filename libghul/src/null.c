@@ -97,12 +97,21 @@ static uintptr_t resume_at(uintptr_t pc) {
 }
 
 /*
- * Entered with the faulting instruction's address plus one pushed as if it
- * were a call's return address, so the unwinder finds the faulting function
- * as this frame's caller and looks up the faulting instruction itself.
+ * Entered as if the faulting instruction had called it, with the faulting
+ * instruction's address plus one as the return address, so the unwinder
+ * finds the faulting function as this frame's caller and looks up the
+ * faulting instruction itself.
+ *
+ * On x86_64 the return address is pushed. On arm64 it cannot go in lr,
+ * which a leaf function may still need, and sp has to stay 16-byte aligned,
+ * so the handler leaves a 32-byte frame below the interrupted sp: the
+ * interrupted fp, the return address, the interrupted lr. The frame names
+ * its return address in a column of its own, x16, so the faulting
+ * function's lr is restored as it was.
  */
 void $libghul_null_dereference(void);
 
+#if defined(__x86_64__)
 __asm__(
     "    .text\n"
     "    .p2align 4\n"
@@ -119,6 +128,26 @@ __asm__(
     "    ud2\n"
     "    .cfi_endproc\n"
     "    .size \"$libghul_null_dereference\", . - \"$libghul_null_dereference\"\n");
+#elif defined(__aarch64__)
+__asm__(
+    "    .text\n"
+    "    .p2align 2\n"
+    "    .type \"$libghul_null_dereference\", %function\n"
+    "\"$libghul_null_dereference\":\n"
+    "    .cfi_startproc\n"
+    "    .cfi_return_column x16\n"
+    "    .cfi_def_cfa sp, 32\n"
+    "    .cfi_offset x29, -32\n"
+    "    .cfi_offset x16, -24\n"
+    "    .cfi_offset x30, -16\n"
+    "    mov x29, sp\n"
+    "    bl \"$ghul_throw_null_reference\"\n"
+    "    brk #0\n"
+    "    .cfi_endproc\n"
+    "    .size \"$libghul_null_dereference\", . - \"$libghul_null_dereference\"\n");
+#else
+#error "no null-dereference entry for this architecture"
+#endif
 
 /* The handler installed before this one, for each signal handled here. */
 static struct sigaction previous[NSIG];
@@ -224,10 +253,21 @@ static void report(int signal, uintptr_t address, uintptr_t sp, void *context) {
 }
 
 static void on_fault(int signal, siginfo_t *info, void *context) {
-    greg_t *registers = ((ucontext_t *)context)->uc_mcontext.gregs;
     uintptr_t address = (uintptr_t)info->si_addr;
+
+    /* The interrupted pc and sp, read and written back to resume past a
+     * null dereference. x86_64 keeps them in the greg array; musl's arm64
+     * mcontext is struct sigcontext, with the 31 general registers in
+     * regs[], then sp and pc separately. */
+#if defined(__x86_64__)
+    greg_t *registers = ((ucontext_t *)context)->uc_mcontext.gregs;
     uintptr_t pc = (uintptr_t)registers[REG_RIP];
     uintptr_t sp = (uintptr_t)registers[REG_RSP];
+#else
+    mcontext_t *m = &((ucontext_t *)context)->uc_mcontext;
+    uintptr_t pc = (uintptr_t)m->pc;
+    uintptr_t sp = (uintptr_t)m->sp;
+#endif
 
     int is_null = signal == SIGSEGV && $ghul_make_null_reference && $ghul_throw_null_reference &&
                   address < NULL_REGION;
@@ -240,6 +280,7 @@ static void on_fault(int signal, siginfo_t *info, void *context) {
 
     uintptr_t handler = address < FOLDED_REGION ? resume_at(pc) : 0;
 
+#if defined(__x86_64__)
     if (handler) {
         registers[REG_RIP] = (greg_t)handler;
         return;
@@ -250,6 +291,21 @@ static void on_fault(int signal, siginfo_t *info, void *context) {
 
     registers[REG_RSP] = (greg_t)stack;
     registers[REG_RIP] = (greg_t)(uintptr_t)$libghul_null_dereference;
+#else
+    if (handler) {
+        m->pc = handler;
+        return;
+    }
+
+    uintptr_t *frame = (uintptr_t *)sp - 4;
+    frame[0] = m->regs[29];
+    frame[1] = pc + 1;
+    frame[2] = m->regs[30];
+    frame[3] = 0;
+
+    m->sp = (uintptr_t)frame;
+    m->pc = (uintptr_t)$libghul_null_dereference;
+#endif
 }
 
 void $libghul_fault_init(void) {

@@ -23,6 +23,10 @@ flags=(
     -Wall
     -Wextra
     -Werror
+    # These definitions replace the C library's memcpy, memmove, memset and
+    # friends, so the compiler must not fold code in them into calls to the
+    # very functions they define.
+    -fno-builtin
     -fno-pie
     -ffunction-sections
     -fdata-sections

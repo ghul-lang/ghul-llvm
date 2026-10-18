@@ -21,6 +21,8 @@ cmake -G Ninja -S "${root}" -B "${build}" \
     -DLLVM_ROOT="${llvm_prefix}" \
     -DGHUL_LLVM_VERSION="${version}" \
     -DGHUL_LLVM_TRIPLE="${TRIPLE}" \
+    -DGHUL_LLVM_BACKEND="${GHUL_LLVM_BACKEND}" \
+    -DGHUL_LLVM_CPU="${GHUL_LLVM_CPU}" \
     >/dev/null
 
 ninja -C "${build}" -j "${jobs}"

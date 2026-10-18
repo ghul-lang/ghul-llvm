@@ -39,14 +39,18 @@ jobs:
       with:
         prerelease: ${{ github.event_name == 'pull_request' && format('beta.{0}', github.run_number) || '' }}
 
-  # One job per triple, each producing that triple's archive. There is one
-  # triple so far.
+  # One job per triple, each producing that triple's archive. The build is
+  # native, so the runner's architecture picks the triple: an x64 runner
+  # builds the x86_64 archive, an arm64 runner the aarch64 one.
   build_and_smoke_test:
-    name: Build and smoke test
+    name: Build and smoke test (${{ matrix.os }})
     needs: [version]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-26.04-arm]
 
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     permissions:
       contents: read
@@ -93,7 +97,7 @@ jobs:
 
     - uses: actions/upload-artifact@v7
       with:
-        name: archives
+        name: archives-${{ matrix.os }}
         path: dist
 
   create_release:
@@ -115,8 +119,9 @@ jobs:
     - name: Download the archives
       uses: actions/download-artifact@v8
       with:
-        name: archives
+        pattern: archives-*
         path: dist
+        merge-multiple: true
 
     - name: Create changelog
       run: git log -1 --format="%s%n%n%b%n%n" >changelog.txt

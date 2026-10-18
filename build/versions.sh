@@ -4,14 +4,42 @@
 
 # The target triple the executables this build produces run on. One release
 # archive is built per triple, and it is also the platform the tool itself
-# runs on.
-TRIPLE=x86_64-unknown-linux-musl
+# runs on. The build is native: the machine it runs on picks the triple and,
+# with it, the LLVM release and builtins below.
+case "$(uname -m)" in
+x86_64)
+    TRIPLE=x86_64-unknown-linux-musl
+    # The backend LLVM registers that triple's target under, and the CPU
+    # code is generated for unless --cpu names another.
+    GHUL_LLVM_BACKEND=X86
+    GHUL_LLVM_CPU=x86-64-v3
+    ;;
+aarch64)
+    TRIPLE=aarch64-unknown-linux-musl
+    GHUL_LLVM_BACKEND=AArch64
+    GHUL_LLVM_CPU=cortex-a72
+    ;;
+*)
+    echo "no ghul-llvm build for $(uname -m)" >&2
+    exit 1
+    ;;
+esac
 
 # LLVM's own release build: prebuilt static libraries for LLVM and LLD, and
-# the compiler-rt builtins. Nothing from LLVM is compiled here.
+# the compiler-rt builtins. Nothing from LLVM is compiled here. The release
+# is published per architecture, named after the machine it runs on.
 LLVM_VERSION=23.1.3
-LLVM_RELEASE=LLVM-${LLVM_VERSION}-Linux-X64
-LLVM_SHA256=14d2f701eb68fb799001bdea6231048f3990690fa2f406d563555ff8f744daba
+
+case "${TRIPLE}" in
+x86_64-*)
+    LLVM_RELEASE=LLVM-${LLVM_VERSION}-Linux-X64
+    LLVM_SHA256=14d2f701eb68fb799001bdea6231048f3990690fa2f406d563555ff8f744daba
+    ;;
+aarch64-*)
+    LLVM_RELEASE=LLVM-${LLVM_VERSION}-Linux-ARM64
+    LLVM_SHA256=1154f37ec15b5654fcb8cc3a8a2352a4cc4eef44bdff7ddd47fb10ea85c82f01
+    ;;
+esac
 LLVM_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_RELEASE}.tar.zst
 
 # LLVM's source release, of which only libunwind is built here: the unwinder
@@ -19,8 +47,17 @@ LLVM_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_V
 LLVM_SOURCE_SHA256=c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
 LLVM_SOURCE_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/llvm-project-${LLVM_VERSION}.src.tar.xz
 
-# The builtins in that release that are linked into every executable.
-LLVM_BUILTINS=lib/clang/${LLVM_VERSION%%.*}/lib/x86_64-unknown-linux-gnu/libclang_rt.builtins.a
+# The builtins in that release that are linked into every executable. The
+# directory inside the release is named for the triple the builtins were
+# compiled for, which LLVM spells with gnu rather than musl.
+case "${TRIPLE}" in
+x86_64-*)
+    LLVM_BUILTINS=lib/clang/${LLVM_VERSION%%.*}/lib/x86_64-unknown-linux-gnu/libclang_rt.builtins.a
+    ;;
+aarch64-*)
+    LLVM_BUILTINS=lib/clang/${LLVM_VERSION%%.*}/lib/aarch64-unknown-linux-gnu/libclang_rt.builtins.a
+    ;;
+esac
 
 # The C library executables are linked against, built from source: it is
 # small, and building it is what makes the version a pin rather than whatever
