@@ -247,10 +247,17 @@ void $libghul_write_signal_backtrace(void *signal_context) {
 
     unw_set_reg(&cursor, UNW_REG_SP, (unw_word_t)m->sp);
 
-    /* Last, since setting it looks up the frame the address is in. */
-    if (unw_set_reg(&cursor, UNW_REG_IP, (unw_word_t)m->pc) != 0) {
+    /* Last, since setting it looks up the frame the address is in. The
+     * unwinder takes the frame for a call's and looks its rules up at the
+     * address before this one, which for a fault in a prologue is the rule
+     * from before the stack was adjusted. One past the faulting instruction
+     * makes it look up the faulting instruction's own. */
+    if (unw_set_reg(&cursor, UNW_REG_IP, (unw_word_t)m->pc + 1) != 0) {
         return;
     }
+
+    write_frames(&cursor, 0);
+    return;
 
 #else
 #error "no signal register map for this architecture"
