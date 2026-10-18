@@ -342,15 +342,15 @@ x86_64)
     done
     ;;
 aarch64)
-    # Nothing converts the fault to a throw on arm64 yet, so the read dies
-    # as a plain memory fault: the process ends with the signal, and the
-    # fault report names the frame it happened in.
+    # Nothing folds a test into the read on arm64, so the tested read takes
+    # its explicit null branch and throws as any exception does, and the
+    # untested read faults and ends the process with the signal, before its
+    # caller's catch. The x86_64 sequence without its last line.
     for build in null null-O0; do
         status=0
         output="$(./${build} 2>&1)" || status=$?
-        check "${build}: reads through null fault on arm64, reported like a wild fault" \
-            "139 Fatal error. SIGSEGV: invalid memory access at address 0x8" \
-            "${status} $(head -n 1 <<<"${output}")"
+        check "${build}: the tested read throws, the untested one faults on arm64" \
+            "139 ${expected_nulls}" "${status} ${output}"
     done
     ;;
 esac
