@@ -71,6 +71,24 @@ jobs:
     - name: Build, pack and smoke test
       run: build/all.sh ${{ needs.version.outputs.package }}
 
+    # The arm64 run is new: when the smoke test's programs segfault, a
+    # backtrace from gdb of the first program that fails says where.
+    - name: Debug a segfault with gdb
+      if: ${{ failure() && matrix.os == 'ubuntu-26.04-arm' }}
+      run: |
+        set -euo pipefail
+
+        . build/versions.sh
+
+        sudo apt-get update -qq && sudo apt-get install -y -qq gdb >/dev/null
+
+        scratch="$(mktemp -d)"
+        tar -xzf "dist/ghul-llvm-${TRIPLE}.tar.gz" -C "${scratch}"
+        tool="${scratch}/ghul-llvm-${TRIPLE}/bin/ghul-llvm"
+
+        "${tool}" tests/hello.ll -o hello
+        gdb -batch -ex run -ex 'info registers pc sp lr' -ex bt ./hello 2>&1 | tail -40
+
     # The programs ghul-llvm builds must run with nothing at all from the
     # system: here, in a container that has no files but the program.
     - name: Run a built program with no C library present
