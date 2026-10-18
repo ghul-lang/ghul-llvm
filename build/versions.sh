@@ -17,7 +17,7 @@ x86_64)
 aarch64)
     TRIPLE=aarch64-unknown-linux-musl
     GHUL_LLVM_BACKEND=AArch64
-    GHUL_LLVM_CPU=a72
+    GHUL_LLVM_CPU=cortex-a72
     ;;
 *)
     echo "no ghul-llvm build for $(uname -m)" >&2

@@ -113,9 +113,16 @@ expect_status 0 "emits assembly" "${tool}" --emit=asm "${tests}/hello.ll" -o hel
 grep -q 'main:' hello.s && pass "the assembly defines main" || fail "the assembly has no main"
 
 expect_status 0 "emits assembly for the default CPU" "${tool}" --emit=asm "${tests}/shift.ll" -o shift.s
-grep -q shlx shift.s && pass "code is generated for x86-64-v3 by default" || fail "shift.s does not use x86-64-v3's shlx"
-expect_status 0 "emits assembly for a named CPU" "${tool}" --emit=asm --cpu=x86-64 "${tests}/shift.ll" -o shift-generic.s
-grep -q shlx shift-generic.s && fail "--cpu=x86-64 still used shlx" || pass "--cpu names the CPU code is generated for"
+if [ "$(uname -m)" = "x86_64" ]; then
+    # The x64 default CPU is x86-64-v3, whose shlx a generic build does not
+    # use; the pair of assertions is how the --cpu default and its override
+    # are told apart. There is no equivalent assertion for arm64.
+    grep -q shlx shift.s && pass "code is generated for x86-64-v3 by default" || fail "shift.s does not use x86-64-v3's shlx"
+    expect_status 0 "emits assembly for a named CPU" "${tool}" --emit=asm --cpu=x86-64 "${tests}/shift.ll" -o shift-generic.s
+    grep -q shlx shift-generic.s && fail "--cpu=x86-64 still used shlx" || pass "--cpu names the CPU code is generated for"
+else
+    pass "the default CPU generates code (asserted for x86-64 only)"
+fi
 
 expect_status 0 "emits an object" "${tool}" --emit=obj "${tests}/hello.ll" -o hello.o
 file hello.o | grep -q 'relocatable' && pass "the object is relocatable" || fail "hello.o is not an object"
@@ -364,7 +371,7 @@ needed="$(readelf -d "${tool}" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | 
 
 for library in ${needed}; do
     case "${library}" in
-    libc.so.6 | libm.so.6 | ld-linux-x86-64.so.2) ;;
+    libc.so.6 | libm.so.6 | ld-linux-x86-64.so.2 | ld-linux-aarch64.so.1) ;;
     *) fail "ghul-llvm needs ${library}" ;;
     esac
 done
