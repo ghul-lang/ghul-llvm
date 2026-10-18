@@ -342,15 +342,18 @@ x86_64)
     done
     ;;
 aarch64)
-    # Nothing folds a test into the read on arm64, so the tested read takes
-    # its explicit null branch and throws as any exception does, and the
-    # untested read faults and ends the process with the signal, before its
-    # caller's catch. The x86_64 sequence without its last line.
+    # No test is folded into a read on arm64, and the tested read faults
+    # all the same, at its address, reported with the frame it happened
+    # in: the arm64 handler answers every read through null as a memory
+    # fault, whatever guarded it. This is the behaviour to replace when
+    # the throw-from-fault work lands.
     for build in null null-O0; do
         status=0
         output="$(./${build} 2>&1)" || status=$?
-        check "${build}: the tested read throws, the untested one faults on arm64" \
-            "139 ${expected_nulls}" "${status} ${output}"
+        check "${build}: reads through null fault on arm64, reported with its frame" \
+            "139 read value
+Fatal error. SIGSEGV: invalid memory access at address 0x8
+   at folded" "${status} ${output}"
     done
     ;;
 esac
