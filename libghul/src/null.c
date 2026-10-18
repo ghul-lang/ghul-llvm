@@ -262,7 +262,9 @@ static void on_fault(int signal, siginfo_t *info, void *context) {
     registers[REG_RSP] = (greg_t)stack;
     registers[REG_RIP] = (greg_t)(uintptr_t)$libghul_null_dereference;
 #else
-    report(signal, address, (uintptr_t)context, context);
+    mcontext_t *m = &((ucontext_t *)context)->uc_mcontext;
+
+    report(signal, address, m->sp, context);
     pass_on(signal, info, context);
 #endif
 }
