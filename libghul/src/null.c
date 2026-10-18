@@ -53,6 +53,8 @@ extern const uint8_t __ghul_faultmaps_end[] __attribute__((weak));
 
 #define READ(type, p) ({ type value; memcpy(&value, (p), sizeof value); (p) += sizeof value; value; })
 
+#if defined(__x86_64__)
+
 /*
  * The block a folded test resumes at for a fault at `pc`, or 0 where `pc` is
  * not a folded read. The section holds one map per object, each a header,
@@ -95,6 +97,8 @@ static uintptr_t resume_at(uintptr_t pc) {
 
     return 0;
 }
+#endif
+
 
 /*
  * Entered with the faulting instruction's address plus one pushed as if it
