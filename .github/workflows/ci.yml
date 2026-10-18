@@ -86,8 +86,10 @@ jobs:
         tar -xzf "dist/ghul-llvm-${TRIPLE}.tar.gz" -C "${scratch}"
         tool="${scratch}/ghul-llvm-${TRIPLE}/bin/ghul-llvm"
 
-        "${tool}" tests/hello.ll -o hello
-        gdb -batch -ex run -ex 'info registers pc sp lr' -ex bt ./hello 2>&1 | tail -40
+        "${tool}" tests/libghul/support.ll --emit=obj -o support.o
+        "${tool}" tests/libghul/null.ll support.o -o null-test
+
+        gdb -batch -ex run -ex 'info registers pc sp lr' -ex bt null-test 2>&1 | tail -50
 
     # The programs ghul-llvm builds must run with nothing at all from the
     # system: here, in a container that has no files but the program.
