@@ -29,6 +29,25 @@ set(GHUL_LLVM_TRIPLE "x86_64-unknown-linux-musl" CACHE STRING "the triple ghul-l
 set(GHUL_LLVM_BACKEND "X86" CACHE STRING "the LLVM backend for that triple, as LLVM names it")
 set(GHUL_LLVM_CPU "x86-64-v3" CACHE STRING "the CPU code is generated for unless --cpu names another")
 
+# The triple, backend and default CPU the build generates code for follow the
+# machine it is built on, unless the caller set them. The backend is the name
+# LLVM registers that triple's target under, and each architecture names a
+# default CPU that is broadly representative without pinning one machine.
+if(NOT DEFINED GHUL_LLVM_TRIPLE_SET AND NOT CMAKE_CROSSCOMPILING)
+    set(GHUL_LLVM_TRIPLE_SET ON CACHE INTERNAL "")
+    string(REGEX MATCH "^(x86_64|aarch64)" _arch "${CMAKE_SYSTEM_PROCESSOR}")
+
+    if(_arch STREQUAL "aarch64")
+        set(GHUL_LLVM_TRIPLE "aarch64-unknown-linux-musl" CACHE STRING "the triple ghul-llvm generates code for" FORCE)
+        set(GHUL_LLVM_BACKEND "AArch64" CACHE STRING "the LLVM backend for that triple, as LLVM names it" FORCE)
+        set(GHUL_LLVM_CPU "a72" CACHE STRING "the CPU code is generated for unless --cpu names another" FORCE)
+    else()
+        set(GHUL_LLVM_TRIPLE "x86_64-unknown-linux-musl" CACHE STRING "the triple ghul-llvm generates code for" FORCE)
+        set(GHUL_LLVM_BACKEND "X86" CACHE STRING "the LLVM backend for that triple, as LLVM names it" FORCE)
+        set(GHUL_LLVM_CPU "x86-64-v3" CACHE STRING "the CPU code is generated for unless --cpu names another" FORCE)
+    endif()
+endif()
+
 # LLD's driver initialises every backend LLVM was built with, for link-time
 # optimisation, and LLVM's release is built with all of them. Each backend
 # but ours gets initialisers that do nothing, defined here, so the linker
@@ -71,6 +90,7 @@ target_compile_definitions(ghul-llvm PRIVATE
     GHUL_LLVM_VERSION="${GHUL_LLVM_VERSION}"
     GHUL_LLVM_TRIPLE="${GHUL_LLVM_TRIPLE}"
     GHUL_LLVM_CPU="${GHUL_LLVM_CPU}"
+    GHUL_LLVM_BACKEND="${GHUL_LLVM_BACKEND}"
     GHUL_ABI_VERSION=${GHUL_ABI_VERSION}
 )
 

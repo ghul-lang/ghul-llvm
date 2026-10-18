@@ -9,9 +9,15 @@
 case "$(uname -m)" in
 x86_64)
     TRIPLE=x86_64-unknown-linux-musl
+    # The backend LLVM registers that triple's target under, and the CPU
+    # code is generated for unless --cpu names another.
+    GHUL_LLVM_BACKEND=X86
+    GHUL_LLVM_CPU=x86-64-v3
     ;;
 aarch64)
     TRIPLE=aarch64-unknown-linux-musl
+    GHUL_LLVM_BACKEND=AArch64
+    GHUL_LLVM_CPU=a72
     ;;
 *)
     echo "no ghul-llvm build for $(uname -m)" >&2
