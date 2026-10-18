@@ -103,6 +103,7 @@ static uintptr_t resume_at(uintptr_t pc) {
  */
 void $libghul_null_dereference(void);
 
+#if defined(__x86_64__)
 __asm__(
     "    .text\n"
     "    .p2align 4\n"
@@ -119,6 +120,25 @@ __asm__(
     "    ud2\n"
     "    .cfi_endproc\n"
     "    .size \"$libghul_null_dereference\", . - \"$libghul_null_dereference\"\n");
+#else
+/* arm64: same frame, in the other ISA. The prologue pushes fp and lr in
+ * one store, so the CFI gives both offsets at once. */
+__asm__(
+    "    .text\n"
+    "    .p2align 4\n"
+    "    .type \"$libghul_null_dereference\", %function\n"
+    "\"$libghul_null_dereference\":\n"
+    "    .cfi_startproc\n"
+    "    stp x29, x30, [sp, #-16]!\n"
+    "    .cfi_def_cfa sp, 16\n"
+    "    .cfi_offset x29, -16\n"
+    "    .cfi_offset x30, -8\n"
+    "    mov x29, sp\n"
+    "    bl \"$ghul_throw_null_reference\"\n"
+    "    brk #0\n"
+    "    .cfi_endproc\n"
+    "    .size \"$libghul_null_dereference\", . - \"$libghul_null_dereference\"\n");
+#endif
 
 /* The handler installed before this one, for each signal handled here. */
 static struct sigaction previous[NSIG];
