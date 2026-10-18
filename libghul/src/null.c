@@ -224,10 +224,21 @@ static void report(int signal, uintptr_t address, uintptr_t sp, void *context) {
 }
 
 static void on_fault(int signal, siginfo_t *info, void *context) {
-    greg_t *registers = ((ucontext_t *)context)->uc_mcontext.gregs;
     uintptr_t address = (uintptr_t)info->si_addr;
+
+    /* The interrupted pc and sp, written back to resume past a null
+     * dereference. x86_64 keeps them in the greg array; musl's arm64
+     * mcontext is struct sigcontext, with the 31 general registers in
+     * regs[], then sp and pc separately. */
+#if defined(__x86_64__)
+    greg_t *registers = ((ucontext_t *)context)->uc_mcontext.gregs;
     uintptr_t pc = (uintptr_t)registers[REG_RIP];
     uintptr_t sp = (uintptr_t)registers[REG_RSP];
+#else
+    mcontext_t *m = &((ucontext_t *)context)->uc_mcontext;
+    uintptr_t pc = (uintptr_t)m->pc;
+    uintptr_t sp = (uintptr_t)m->sp;
+#endif
 
     int is_null = signal == SIGSEGV && $ghul_make_null_reference && $ghul_throw_null_reference &&
                   address < NULL_REGION;
@@ -241,15 +252,24 @@ static void on_fault(int signal, siginfo_t *info, void *context) {
     uintptr_t handler = address < FOLDED_REGION ? resume_at(pc) : 0;
 
     if (handler) {
+#if defined(__x86_64__)
         registers[REG_RIP] = (greg_t)handler;
+#else
+        m->pc = (unsigned long long)handler;
+#endif
         return;
     }
 
     uintptr_t *stack = (uintptr_t *)sp;
     *--stack = pc + 1;
 
+#if defined(__x86_64__)
     registers[REG_RSP] = (greg_t)stack;
     registers[REG_RIP] = (greg_t)(uintptr_t)$libghul_null_dereference;
+#else
+    m->sp = (unsigned long long)stack;
+    m->pc = (unsigned long long)(uintptr_t)$libghul_null_dereference;
+#endif
 }
 
 void $libghul_fault_init(void) {
