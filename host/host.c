@@ -98,16 +98,18 @@ int main(int argc, char **argv) {
 
         clock_gettime(CLOCK_MONOTONIC, &start);
 
-        /* Local, so one cell's names never reach another's: every cell
-         * defines the entry points above. */
-        void *cell = dlopen(argv[i], RTLD_NOW | RTLD_LOCAL);
+        /* Global, so a later cell binds to the names an earlier one defines.
+         * Every cell also defines the entry points above; those are looked
+         * up in the cell's own handle below, and the host's versions come
+         * first in the global scope. */
+        void *cell = dlopen(argv[i], RTLD_NOW | RTLD_GLOBAL);
 
         if (!cell) {
             fprintf(stderr, "ghul-host: %s\n", dlerror());
             return 2;
         }
 
-        cell_entry = symbol(cell, "$ghul_entry", 1);
+        cell_entry = symbol(cell, "$ghul_entry", 0);
         cell_make_string = symbol(cell, "$ghul_make_string", 0);
         cell_make_bytes = symbol(cell, "$ghul_make_bytes", 0);
         cell_report_unhandled = symbol(cell, "$ghul_report_unhandled", 0);
@@ -115,7 +117,8 @@ int main(int argc, char **argv) {
 
         clock_gettime(CLOCK_MONOTONIC, &loaded);
 
-        status = $ghul_entry();
+        /* A cell of definitions alone has nothing to run. */
+        status = cell_entry ? $ghul_entry() : 0;
 
         $libghul_flush_output();
 
