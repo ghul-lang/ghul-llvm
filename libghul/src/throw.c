@@ -14,8 +14,17 @@
 #include "internal.h"
 
 #include <gc.h>
+#include <setjmp.h>
 #include <unwind.h>
 #include <unistd.h>
+
+/*
+ * Where an exception nothing catches is taken to, after it has been reported,
+ * instead of ending the process: a host that runs the program in pieces sets
+ * it around each, so one that fails leaves the others' state in place.
+ * Null ends the process, as it does for a program that is one piece.
+ */
+void *$libghul_unhandled_jump;
 
 /* "GHUL" as the vendor and "GHUL" as the language, as the protocol asks. */
 #define EXCEPTION_CLASS 0x4748554C4748554CULL
@@ -47,6 +56,10 @@ _Noreturn void $ghul_throw(void *exception) {
     $ghul_report_unhandled(exception);
     $libghul_write_backtrace();
     $libghul_flush_output();
+
+    if ($libghul_unhandled_jump) {
+        siglongjmp(*(sigjmp_buf *)$libghul_unhandled_jump, 1);
+    }
 
     _exit(LIBGHUL_FAILURE_STATUS);
 }
