@@ -98,11 +98,12 @@ int main(int argc, char **argv) {
 
         clock_gettime(CLOCK_MONOTONIC, &start);
 
-        /* Global, so a later cell binds to the names an earlier one defines.
+        /* Lazy, so a call into a cell loaded later binds when it is first made.
+         * Global, so a later cell binds to the names an earlier one defines.
          * Every cell also defines the entry points above; those are looked
          * up in the cell's own handle below, and the host's versions come
          * first in the global scope. */
-        void *cell = dlopen(argv[i], RTLD_NOW | RTLD_GLOBAL);
+        void *cell = dlopen(argv[i], RTLD_LAZY | RTLD_GLOBAL);
 
         if (!cell) {
             fprintf(stderr, "ghul-host: %s\n", dlerror());
