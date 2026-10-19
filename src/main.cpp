@@ -42,6 +42,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (options.emit == ghul_llvm::Emit::Cell) {
+        return ghul_llvm::link_cell(options, llvm::StringRef(object.data(), object.size())) ? 0 : 1;
+    }
+
     if (options.emit != ghul_llvm::Emit::Executable) {
         return 0;
     }

@@ -88,8 +88,21 @@ llvm::CodeGenOptLevel codegen_level(unsigned level) {
     }
 }
 
+// A cell runs inside a glibc host, so its code is generated for the same
+// machine under the gnu environment.
+std::string target_triple(const Options &options) {
+    std::string triple = GHUL_LLVM_TRIPLE;
+
+    if (options.emit == Emit::Cell) {
+        const std::string musl = "-musl";
+        triple.replace(triple.rfind(musl), musl.size(), "-gnu");
+    }
+
+    return triple;
+}
+
 std::unique_ptr<llvm::TargetMachine> target_machine(const Options &options) {
-    llvm::Triple triple(GHUL_LLVM_TRIPLE);
+    llvm::Triple triple(target_triple(options));
     std::string error;
 
     const llvm::Target *target = llvm::TargetRegistry::lookupTarget(triple, error);
@@ -109,23 +122,34 @@ std::unique_ptr<llvm::TargetMachine> target_machine(const Options &options) {
     // where it can be, into the read it guards: the read is left to fault,
     // and the fault map records where the test would have branched to.
     // libghul resumes there when the read faults.
-    enable_implicit_null_checks();
+    // A cell's fault map is not one libghul in the host knows of, so a cell
+    // keeps its explicit null tests.
+    if (options.emit != Emit::Cell) {
+        enable_implicit_null_checks();
+    }
 
     // Executables are linked statically and not as position independent,
-    // so code is generated for a fixed load address.
+    // so code is generated for a fixed load address. A cell is loaded
+    // wherever the host puts it and binds its external names to the host's
+    // and to other cells', so its code is position independent.
     return std::unique_ptr<llvm::TargetMachine>(target->createTargetMachine(
         triple, options.cpu, "", target_options,
-        llvm::Reloc::Static, std::nullopt, codegen_level(options.optimisation)));
+        options.emit == Emit::Cell ? llvm::Reloc::PIC_ : llvm::Reloc::Static, std::nullopt, codegen_level(options.optimisation)));
 }
 
 // Gives the module the triple and data layout this build generates code
 // for, and refuses one that names a different triple. A module that names
 // none takes ours.
-bool set_target(llvm::Module &module, llvm::TargetMachine &machine) {
+bool set_target(const Options &options, llvm::Module &module, llvm::TargetMachine &machine) {
     const llvm::Triple &ours = machine.getTargetTriple();
     const llvm::Triple &theirs = module.getTargetTriple();
 
-    if (!theirs.str().empty() && theirs.normalize() != ours.normalize()) {
+    // A cell may be written for the musl triple the compiler names: only the
+    // machine matters, since the libc is the host's.
+    bool same = options.emit == Emit::Cell ? theirs.getArch() == ours.getArch()
+                                           : theirs.normalize() == ours.normalize();
+
+    if (!theirs.str().empty() && !same) {
         return fail(module.getModuleIdentifier() + " is for " + theirs.str() +
                     ", but ghul-llvm generates code for " + ours.str());
     }
@@ -217,6 +241,10 @@ bool compile(const Options &options, llvm::SmallVectorImpl<char> &object) {
     // Every function gets an unwind table, including those that cannot
     // throw, so a crash report can walk the stack through any frame. The
     // tables are data beside the code and change no instruction.
+    if (options.emit == Emit::Cell) {
+        module->setPICLevel(llvm::PICLevel::BigPIC);
+    }
+
     if (module->getUwtable() == llvm::UWTableKind::None) {
         module->setUwtable(llvm::UWTableKind::Async);
     }
@@ -229,7 +257,7 @@ bool compile(const Options &options, llvm::SmallVectorImpl<char> &object) {
 
     auto machine = target_machine(options);
 
-    if (!machine || !set_target(*module, *machine) || !optimise(options, *module, *machine)) {
+    if (!machine || !set_target(options, *module, *machine) || !optimise(options, *module, *machine)) {
         return false;
     }
 
@@ -251,6 +279,9 @@ bool compile(const Options &options, llvm::SmallVectorImpl<char> &object) {
         return generate(*module, *machine, llvm::CodeGenFileType::AssemblyFile, assembly) &&
                write_file(options.output, llvm::StringRef(assembly.data(), assembly.size()));
     }
+
+    case Emit::Cell:
+        return generate(*module, *machine, llvm::CodeGenFileType::ObjectFile, object);
 
     case Emit::Object:
         return generate(*module, *machine, llvm::CodeGenFileType::ObjectFile, object) &&

@@ -1,0 +1,51 @@
+#!/bin/bash
+# Checks the cell host against ghul-llvm: that a cell built with --emit=cell
+# is loaded and run by the host, takes the host's names rather than carrying
+# its own, and ends with the status its entry returned.
+#
+#   tests/cell-smoke.sh <ghul-llvm install directory> <host install directory>
+#
+# The first holds bin/ghul-llvm, as out/ and the release archive do; the
+# second holds bin/ghul-host.
+
+set -euo pipefail
+
+tests="$(cd "$(dirname "$0")" && pwd)"
+
+tool="$(cd "$1" && pwd)/bin/ghul-llvm"
+host="$(cd "$2" && pwd)/bin/ghul-host"
+
+scratch="$(mktemp -d)"
+trap 'rm -rf "${scratch}"' EXIT
+
+"${tool}" --emit=cell "${tests}/cell.ll" -o "${scratch}/cell.so"
+
+# A cell carries no C library of its own: whatever it needs, the host
+# supplies.
+if readelf -d "${scratch}/cell.so" | grep -q NEEDED; then
+    echo "FAILED: the cell names a library it needs" >&2
+    exit 1
+fi
+
+status=0
+output="$("${host}" "${scratch}/cell.so")" || status=$?
+
+if [ "${output}" != "hello from a cell" ]; then
+    echo "FAILED: the cell printed '${output}'" >&2
+    exit 1
+fi
+
+if [ "${status}" -ne 7 ]; then
+    echo "FAILED: the host exited ${status}, expected the entry's 7" >&2
+    exit 1
+fi
+
+# Two cells in one process, and the arguments after --.
+"${host}" "${scratch}/cell.so" "${scratch}/cell.so" -- one two >"${scratch}/twice" || true
+
+if [ "$(grep -c 'hello from a cell' "${scratch}/twice")" -ne 2 ]; then
+    echo "FAILED: the host did not run both cells" >&2
+    exit 1
+fi
+
+echo "ok: a cell is loaded and run by the host"

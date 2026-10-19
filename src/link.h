@@ -13,4 +13,11 @@ namespace ghul_llvm {
 // Reports any failure on standard error and returns false.
 bool link(const Options &options, llvm::StringRef object, const char *argv0);
 
+// Links `object` into a shared object at the output path that a glibc host
+// loads with dlopen. It takes nothing from the C runtime: the names it
+// leaves undefined are the host's, and are bound when it is loaded.
+//
+// Reports any failure on standard error and returns false.
+bool link_cell(const Options &options, llvm::StringRef object);
+
 } // namespace ghul_llvm

@@ -31,7 +31,7 @@ same architecture.
 | `-o <file>` | where to write the output |
 | `-O0` ... `-O3` | optimisation level; `-O2` by default |
 | `--passes=<pipeline>` | a new pass manager pipeline to run instead of the default, such as `function(mem2reg,instcombine)` |
-| `--emit=<kind>` | stop early: `obj`, `asm`, `bc` or `ll` rather than `exe` |
+| `--emit=<kind>` | stop early: `obj`, `asm`, `bc` or `ll` rather than `exe`; or `cell`, a shared object for the cell host (below) |
 | `--keep` | keep the optimised bitcode and the object, as `<output>.bc` and `<output>.o` |
 | `--cpu=<cpu>` | the CPU to generate code for; `x86-64-v3` (AVX2, 2013 and later) by default |
 | `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`) |
@@ -66,6 +66,28 @@ ghul-llvm-x86_64-unknown-linux-musl/
 `ghul-llvm` itself needs glibc 2.34 or later and nothing else, which covers
 Ubuntu 22.04, Debian 12, RHEL 9 and their successors. x86-64 Linux is the
 only target so far.
+
+## Cells and the cell host
+
+`--emit=cell` writes the program as a position independent shared object, a
+*cell*, that a running host loads with `dlopen` instead of an executable that
+is started. A cell is linked with nothing: no start files, no C library, no
+libghul. Every name it leaves undefined, `$ghul_alloc`, `memcpy`, the host
+operations, is bound to the host's when the cell is loaded, and the names it
+defines for libghul to call, `$ghul_entry` and the rest of "What the program
+provides", are looked up in the cell by the host. Its code is generated for the
+same machine under the gnu environment, and its null checks stay explicit.
+
+The host, `ghul-host`, is a glibc executable with libghul, the collector, the
+unwinder and the big integer library linked into it whole and exported. It
+starts the collector, loads each cell named on its command line, runs its
+entry point, and exits with the last entry's status; arguments after `--` are
+the program's. The collector scans a loaded cell's data, and exceptions unwind
+through a cell's frames as through any other. It is released as a second
+archive, `ghul-llvm-host-<arch>-unknown-linux-gnu.tar.gz`, built in Debian 12
+so that glibc is its only dependency and 2.34 the oldest it runs on. Cells are
+loaded with `RTLD_LOCAL`, so each cell is a separate program that happens to
+share a heap.
 
 ## The libghul ABI
 
@@ -343,7 +365,10 @@ build/docker.sh build/sysroot.sh   # musl, the builtins and the collector, into 
 build/docker.sh build/tool.sh      # ghul-llvm, into out/
 build/docker.sh build/libghul.sh   # libghul.a, into out/
 build/docker.sh build/package.sh   # the release archive, into dist/
+build/host-docker.sh               # the cell host, into out/host/, in debian:bookworm
+build/host-package.sh              # its release archive, into dist/
 tests/smoke.sh                     # checks the build in out/
+tests/cell-smoke.sh out out/host   # runs a cell in the host
 ```
 
 The versions of LLVM, musl, the collector, libtommath and libbacktrace, and their checksums,
