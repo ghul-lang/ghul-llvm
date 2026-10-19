@@ -48,4 +48,16 @@ if [ "$(grep -c 'hello from a cell' "${scratch}/twice")" -ne 2 ]; then
     exit 1
 fi
 
+# A cell with no entry point, and a cell that calls into it.
+"${tool}" --emit=cell "${tests}/cell-library.ll" -o "${scratch}/library.so"
+"${tool}" --emit=cell "${tests}/cell-user.ll" -o "${scratch}/user.so"
+
+status=0
+"${host}" "${scratch}/library.so" "${scratch}/user.so" || status=$?
+
+if [ "${status}" -ne 42 ]; then
+    echo "FAILED: a cell calling into the one before it exited ${status}, expected 42" >&2
+    exit 1
+fi
+
 echo "ok: a cell is loaded and run by the host"

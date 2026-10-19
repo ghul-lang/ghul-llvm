@@ -86,8 +86,9 @@ the program's. The collector scans a loaded cell's data, and exceptions unwind
 through a cell's frames as through any other. It is released as a second
 archive, `ghul-llvm-host-<arch>-unknown-linux-gnu.tar.gz`, built in Debian 12
 so that glibc is its only dependency and 2.34 the oldest it runs on. Cells are
-loaded with `RTLD_LOCAL`, so each cell is a separate program that happens to
-share a heap.
+loaded with `RTLD_GLOBAL` and bound lazily, so a cell can call what an earlier
+cell defines, and what a later one does, by name. A cell need not have an
+entry point.
 
 ## The libghul ABI
 
