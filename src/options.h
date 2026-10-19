@@ -14,6 +14,7 @@ enum class Emit {
     Assembly,   // target assembly
     Object,     // an object file
     Executable, // a linked, statically linked executable
+    Cell,       // a position independent shared object a host loads with dlopen
 };
 
 struct Options {

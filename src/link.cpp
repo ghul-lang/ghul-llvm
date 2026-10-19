@@ -181,4 +181,61 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
     return result.retCode == 0;
 }
 
+bool link_cell(const Options &options, llvm::StringRef object) {
+    llvm::SmallString<256> path;
+
+    if (auto error = llvm::sys::fs::createTemporaryFile("ghul-llvm", "o", path)) {
+        return fail("cannot create a temporary file: " + error.message());
+    }
+
+    TemporaryFile object_file(std::string(path), options.keep);
+
+    {
+        std::error_code error;
+        llvm::raw_fd_ostream out(object_file.path(), error, llvm::sys::fs::OF_None);
+
+        if (error) {
+            return fail("cannot write " + object_file.path() + ": " + error.message());
+        }
+
+        out << object;
+        out.close();
+
+        if (out.has_error()) {
+            return fail("cannot write " + object_file.path() + ": " + out.error().message());
+        }
+    }
+
+    // A shared object with no start files and no libraries. Every default
+    // visibility name it defines is exported, and none binds to itself, so
+    // that a name another object defines first still wins.
+    std::vector<std::string> args = {
+        "ld.lld",
+        "-shared",
+        "--eh-frame-hdr",
+        "-z", "noexecstack",
+        "-o", options.output,
+        object_file.path(),
+    };
+
+    if (options.verbose) {
+        for (size_t i = 0; i < args.size(); ++i) {
+            llvm::errs() << (i ? " " : "") << args[i];
+        }
+
+        llvm::errs() << "\n";
+    }
+
+    std::vector<const char *> argv;
+
+    for (const auto &arg : args) {
+        argv.push_back(arg.c_str());
+    }
+
+    lld::Result result =
+        lld::lldMain(argv, llvm::outs(), llvm::errs(), {{lld::Gnu, &lld::elf::link}});
+
+    return result.retCode == 0;
+}
+
 } // namespace ghul_llvm

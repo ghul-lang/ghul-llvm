@@ -100,9 +100,85 @@ jobs:
         name: archives-${{ matrix.os }}
         path: dist
 
+  # The cell host is a glibc executable, built in Debian 12 so that what it
+  # needs from glibc is no newer than that release has. It is built on the
+  # architecture it runs on, and takes the collector, the unwinder and libghul
+  # into itself, so glibc is its only dependency.
+  build_host:
+    name: Build the cell host (${{ matrix.os }})
+    needs: [version]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-26.04-arm]
+
+    container: debian:bookworm
+
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+    - name: Install the build tools
+      run: |
+        apt-get update -qq
+        apt-get install -y -qq --no-install-recommends gcc g++ make curl ca-certificates xz-utils file git tar zstd
+
+    - uses: actions/checkout@v7
+
+    - name: Cache downloads
+      uses: actions/cache@v6
+      with:
+        path: .cache/downloads
+        key: host-downloads-${{ hashFiles('build/versions.sh') }}
+
+    - name: Build and pack the host
+      run: |
+        build/host.sh
+        build/host-package.sh
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: archives-host-${{ matrix.os }}
+        path: dist
+
+  # A cell built by this release's ghul-llvm runs in this release's host.
+  smoke_test_cell:
+    name: Smoke test a cell (${{ matrix.os }})
+    needs: [build_and_smoke_test, build_host]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-26.04-arm]
+
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: archives-*${{ matrix.os }}
+        path: dist
+        merge-multiple: true
+
+    - name: Run a cell in the host
+      shell: bash
+      run: |
+        set -euo pipefail
+        . build/versions.sh
+        scratch="$(mktemp -d)"
+        tar -xzf "dist/ghul-llvm-${TRIPLE}.tar.gz" -C "${scratch}"
+        tar -xzf "dist/ghul-llvm-host-${TRIPLE/-musl/-gnu}.tar.gz" -C "${scratch}"
+        tests/cell-smoke.sh "${scratch}/ghul-llvm-${TRIPLE}" "${scratch}/ghul-llvm-host-${TRIPLE/-musl/-gnu}"
+
   create_release:
     name: Create release
-    needs: [version, build_and_smoke_test]
+    needs: [version, build_and_smoke_test, build_host, smoke_test_cell]
     runs-on: ubuntu-latest
 
     timeout-minutes: 5

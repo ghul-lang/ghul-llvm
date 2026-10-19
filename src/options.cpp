@@ -38,7 +38,8 @@ constexpr const char *usage_text =
     "  --passes=<pipeline>   run this new pass manager pipeline in place of\n"
     "                        the default one for the optimisation level\n"
     "  --emit=<kind>         stop after producing <kind>: exe (the default),\n"
-    "                        obj, asm, bc or ll\n"
+    "                        obj, asm, bc, ll or cell (a shared object for a\n"
+    "                        glibc host to dlopen, see README.md)\n"
     "  --keep                keep the optimised bitcode and the object beside\n"
     "                        the executable, as <output>.bc and <output>.o\n"
     "  --cpu=<cpu>           the CPU to generate code for (default: " GHUL_LLVM_CPU ")\n"
@@ -68,6 +69,7 @@ bool ends_with(std::string_view text, std::string_view suffix) {
 
 std::optional<Emit> parse_emit(std::string_view kind) {
     if (kind == "exe") return Emit::Executable;
+    if (kind == "cell") return Emit::Cell;
     if (kind == "obj") return Emit::Object;
     if (kind == "asm") return Emit::Assembly;
     if (kind == "bc") return Emit::Bitcode;
@@ -138,7 +140,7 @@ Parsed parse_options(int argc, char **argv) {
             if (!emit) {
                 parsed.exit_status =
                     usage_error("unknown output kind '" + std::string(arg.substr(7)) +
-                                "': expected exe, obj, asm, bc or ll");
+                                "': expected exe, obj, asm, bc, ll or cell");
                 return parsed;
             }
 
