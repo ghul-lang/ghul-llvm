@@ -60,4 +60,31 @@ if [ "${status}" -ne 42 ]; then
     exit 1
 fi
 
+# The host kept running, taking a cell at a time: one that throws what nothing
+# catches ends that cell and not the session.
+"${tool}" --emit=cell "${tests}/cell-throw.ll" -o "${scratch}/throw.so"
+
+mkfifo "${scratch}/commands"
+
+"${host}" --serve "${scratch}/commands" > "${scratch}/served" 2> /dev/null &
+server=$!
+
+{
+    echo "${scratch}/library.so"
+    echo "${scratch}/throw.so"
+    echo "${scratch}/cell.so"
+    echo "${scratch}/user.so"
+    echo quit
+} > "${scratch}/commands"
+
+wait "${server}"
+
+expected=$(printf '\001cell-done 0\n\001cell-done 134\nhello from a cell\n\001cell-done 7\n\001cell-done 42\n')
+
+if [ "$(cat "${scratch}/served")" != "${expected}" ]; then
+    echo "FAILED: the host in serve mode wrote:" >&2
+    cat -v "${scratch}/served" >&2
+    exit 1
+fi
+
 echo "ok: a cell is loaded and run by the host"

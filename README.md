@@ -93,6 +93,16 @@ called before that cell is loaded; the cost is that a call to a name no cell eve
 defines ends the process, with the dynamic loader's message naming the symbol,
 where an eager load would have refused the cell.
 
+`ghul-host --serve <commands>` keeps the process, and so every cell's code and
+data, for as long as it is asked to. It reads one line at a time from the file or
+named pipe `<commands>`; a line naming a cell loads and runs it, and `quit` ends
+the host. The program's standard input and output stay the program's, and after
+each cell the host flushes what it printed and writes `\x01cell-done <status>` to
+standard output, so the driver knows where that cell's output ends. An exception
+nothing in the cell catches is reported and ends that cell, with status 134, not
+the session: libghul takes it back to the host instead of ending the process
+when the host sets `$libghul_unhandled_jump`.
+
 ## The libghul ABI
 
 **Version 4.** `ghul-llvm --abi-version` prints it, and a program can refer to
