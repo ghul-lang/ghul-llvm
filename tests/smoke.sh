@@ -362,9 +362,6 @@ sh -c './null-unhandled; exit $?' 2>/dev/null || status=$?
 check "a program that makes no null-reference exception faults as before" 139 "${status}"
 
 check "reports the ABI version" 4 "$("${tool}" --abi-version)"
-check "requirements.json declares the ABI the tool reports" \
-    "$("${tool}" --abi-version)" \
-    "$(sed -n 's/.*"abi": *\([0-9]*\).*/\1/p' "${root}/requirements.json")"
 
 # ghul-llvm itself needs nothing from the system but the C library.
 needed="$(readelf -d "${tool}" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort | tr '\n' ' ')"

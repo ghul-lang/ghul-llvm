@@ -128,9 +128,6 @@ jobs:
 
     # Each archive is a release asset of its own, named for its triple, so a
     # client downloads only the one for the machine it runs on.
-    # requirements.json goes beside them: the libghul ABI the release links
-    # and the oldest ghul.compiler that emits it, for a client choosing a
-    # release for a compiler.
     - name: Create a release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,6 +135,5 @@ jobs:
         gh release create "${{ needs.version.outputs.tag }}" \
           ./dist/*.tar.gz \
           ./dist/*.tar.gz.sha256 \
-          ./requirements.json \
           --title "${{ needs.version.outputs.tag }}" \
           --notes-file changelog.txt
