@@ -88,7 +88,10 @@ archive, `ghul-llvm-host-<arch>-unknown-linux-gnu.tar.gz`, built in Debian 12
 so that glibc is its only dependency and 2.34 the oldest it runs on. Cells are
 loaded with `RTLD_GLOBAL` and bound lazily, so a cell can call what an earlier
 cell defines, and what a later one does, by name. A cell need not have an
-entry point.
+entry point. Binding is lazy on purpose, so a name a later cell defines can be
+called before that cell is loaded; the cost is that a call to a name no cell ever
+defines ends the process, with the dynamic loader's message naming the symbol,
+where an eager load would have refused the cell.
 
 ## The libghul ABI
 
