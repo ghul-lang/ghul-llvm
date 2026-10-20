@@ -87,4 +87,33 @@ if [ "$(cat "${scratch}/served")" != "${expected}" ]; then
     exit 1
 fi
 
+# A cell that never returns is ended by SIGINT, and the session goes on.
+"${tool}" --emit=cell "${tests}/cell-loop.ll" -o "${scratch}/loop.so"
+
+rm -f "${scratch}/commands"
+mkfifo "${scratch}/commands"
+
+exec 5<>"${scratch}/commands"
+
+"${host}" --serve "${scratch}/commands" > "${scratch}/interrupted" 2> /dev/null &
+server=$!
+
+echo "${scratch}/loop.so" >&5
+sleep 1
+kill -INT "${server}"
+
+echo "${scratch}/cell.so" >&5
+echo quit >&5
+
+wait "${server}"
+exec 5>&-
+
+expected=$(printf '\001cell-done 130\nhello from a cell\n\001cell-done 7\n')
+
+if [ "$(cat "${scratch}/interrupted")" != "${expected}" ]; then
+    echo "FAILED: the host interrupted wrote:" >&2
+    cat -v "${scratch}/interrupted" >&2
+    exit 1
+fi
+
 echo "ok: a cell is loaded and run by the host"
