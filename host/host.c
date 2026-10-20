@@ -33,6 +33,7 @@
 #include <dlfcn.h>
 #include <gc.h>
 #include <setjmp.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,7 +72,21 @@ static double elapsed_ms(struct timespec from, struct timespec to) {
 }
 
 /* The status of a cell that did not load. */
-enum { LOAD_FAILED = 127, UNHANDLED = 134 };
+enum { LOAD_FAILED = 127, UNHANDLED = 134, INTERRUPTED = 130 };
+
+/*
+ * A SIGINT while a cell runs ends that cell, as an exception nothing catches
+ * would, and leaves the session as the cell left it; one that arrives between
+ * cells is ignored. The cell is abandoned where it stands, so whatever it was
+ * in the middle of, including an allocation, is not finished.
+ */
+static void interrupt_cell(int signal_number) {
+    (void)signal_number;
+
+    if ($libghul_unhandled_jump) {
+        siglongjmp(*(sigjmp_buf *)$libghul_unhandled_jump, 2);
+    }
+}
 
 /*
  * Loads the cell at `path` and runs its entry point. A cell that has none,
@@ -109,12 +124,14 @@ static int run_cell(const char *path, int timing) {
     sigjmp_buf boundary;
 
     /* An exception nothing catches comes back here once it is reported. */
-    if (sigsetjmp(boundary, 1) == 0) {
+    int jumped = sigsetjmp(boundary, 1);
+
+    if (jumped == 0) {
         $libghul_unhandled_jump = &boundary;
 
         status = cell_entry ? $ghul_entry() : 0;
     } else {
-        status = UNHANDLED;
+        status = jumped == 2 ? INTERRUPTED : UNHANDLED;
     }
 
     $libghul_unhandled_jump = NULL;
@@ -193,6 +210,14 @@ int main(int argc, char **argv) {
     int first_argument = cells < argc ? cells + 1 : argc;
 
     GC_INIT();
+
+    struct sigaction action;
+
+    memset(&action, 0, sizeof action);
+    action.sa_handler = interrupt_cell;
+    action.sa_flags = SA_RESTART;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGINT, &action, NULL);
 
     $libghul_fault_init();
     $libghul_clock_init();

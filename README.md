@@ -103,6 +103,11 @@ nothing in the cell catches is reported and ends that cell, with status 134, not
 the session: libghul takes it back to the host instead of ending the process
 when the host sets `$libghul_unhandled_jump`.
 
+A SIGINT sent to the host while a cell runs ends that cell with status 130 and
+leaves the session as the cell left it; one that arrives between cells is
+ignored. The cell is abandoned where it stands, so work it was part way through,
+an allocation included, is not finished.
+
 ## The libghul ABI
 
 **Version 4.** `ghul-llvm --abi-version` prints it, and a program can refer to
