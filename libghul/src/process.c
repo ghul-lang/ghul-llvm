@@ -124,6 +124,10 @@ double $ghul_host_monotonic_milliseconds(void) {
            (double)(now.tv_nsec - started.tv_nsec) / 1000000.0;
 }
 
+bool $ghul_host_is_terminal(int32_t stream) {
+    return stream >= 0 && stream <= 2 && isatty(stream);
+}
+
 void $ghul_host_sleep(int32_t milliseconds) {
     struct timespec remaining;
 
