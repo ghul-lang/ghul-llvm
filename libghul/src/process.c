@@ -124,6 +124,20 @@ double $ghul_host_monotonic_milliseconds(void) {
            (double)(now.tv_nsec - started.tv_nsec) / 1000000.0;
 }
 
+void $ghul_host_sleep(int32_t milliseconds) {
+    struct timespec remaining;
+
+    if (milliseconds <= 0) {
+        return;
+    }
+
+    remaining.tv_sec = milliseconds / 1000;
+    remaining.tv_nsec = (long)(milliseconds % 1000) * 1000000L;
+
+    while (nanosleep(&remaining, &remaining) != 0 && errno == EINTR) {
+    }
+}
+
 int32_t $ghul_host_random_u32(void) {
     uint32_t value;
     size_t got = 0;

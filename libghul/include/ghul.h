@@ -190,6 +190,9 @@ void *$ghul_host_stdin_read_to_end(void);
 /* Milliseconds since the program started, from a clock that never goes back. */
 double $ghul_host_monotonic_milliseconds(void);
 
+/* Waits for at least the given number of milliseconds; zero or less returns at once. */
+void $ghul_host_sleep(int32_t milliseconds);
+
 /*
  * Running another program. process_begin starts a command with the program
  * to run, found on the PATH where it names no directory, and

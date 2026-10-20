@@ -6,6 +6,7 @@ declare double @$ghul_host_math_pow(double, double)
 declare double @$ghul_host_math_atan2(double, double)
 declare double @$ghul_host_math_floor(double)
 declare double @$ghul_host_monotonic_milliseconds()
+declare void @$ghul_host_sleep(i32)
 declare i32 @$ghul_host_random_u32()
 
 @$ghul_abi_4 = external constant i32
@@ -34,7 +35,15 @@ clock:
   %forward = fcmp ole double %early, %late
   %started = fcmp oge double %early, 0.0
   %clock_ok = and i1 %forward, %started
-  br i1 %clock_ok, label %random, label %fail_4
+  br i1 %clock_ok, label %sleep, label %fail_4
+
+sleep:
+  %before = call double @$ghul_host_monotonic_milliseconds()
+  call void @$ghul_host_sleep(i32 30)
+  %after = call double @$ghul_host_monotonic_milliseconds()
+  %waited = fsub double %after, %before
+  %sleep_ok = fcmp oge double %waited, 30.0
+  br i1 %sleep_ok, label %random, label %fail_7
 
 random:
   ; Two draws of 32 bits agree once in four billion runs.
@@ -63,4 +72,6 @@ fail_5:
   ret i32 5
 fail_6:
   ret i32 6
+fail_7:
+  ret i32 7
 }
