@@ -193,6 +193,9 @@ double $ghul_host_monotonic_milliseconds(void);
 /* Waits for at least the given number of milliseconds; zero or less returns at once. */
 void $ghul_host_sleep(int32_t milliseconds);
 
+/* Whether the given standard stream (0 input, 1 output, 2 error) is a terminal. */
+bool $ghul_host_is_terminal(int32_t stream);
+
 /*
  * Running another program. process_begin starts a command with the program
  * to run, found on the PATH where it names no directory, and

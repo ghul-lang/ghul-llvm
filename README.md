@@ -308,6 +308,7 @@ A host operation's C signature follows from its declaration:
 | `host.stdin_read_to_end` | `void *(void)` | everything left, possibly empty |
 | `host.monotonic_milliseconds` | `double (void)` | since the program started |
 | `host.sleep` | `void (int32_t)` | waits for at least that many milliseconds; zero or less returns at once |
+| `host.is_terminal` | `bool (int32_t)` | whether standard stream 0, 1 or 2 is a terminal |
 | `host.process_begin` | `void (file_name)` | starts a command; a name with no `/` is found on the `PATH` |
 | `host.process_add_argument` | `void (argument)` | adds the next argument |
 | `host.process_run` | `int32_t (void)` | runs the command to completion, standard input shared, standard output and error captured; the exit status, 128 plus the signal for one that was killed, or -1 where it could not start |
