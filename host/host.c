@@ -215,6 +215,7 @@ int main(int argc, char **argv) {
 
     memset(&action, 0, sizeof action);
     action.sa_handler = interrupt_cell;
+    action.sa_flags = SA_RESTART;
     sigemptyset(&action.sa_mask);
     sigaction(SIGINT, &action, NULL);
 

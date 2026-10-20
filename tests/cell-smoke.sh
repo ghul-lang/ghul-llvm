@@ -87,7 +87,8 @@ if [ "$(cat "${scratch}/served")" != "${expected}" ]; then
     exit 1
 fi
 
-# A cell that never returns is ended by SIGINT, and the session goes on.
+# A cell that never returns is ended by SIGINT, and the session goes on; a
+# SIGINT between cells is ignored.
 "${tool}" --emit=cell "${tests}/cell-loop.ll" -o "${scratch}/loop.so"
 
 rm -f "${scratch}/commands"
@@ -97,6 +98,10 @@ exec 5<>"${scratch}/commands"
 
 "${host}" --serve "${scratch}/commands" > "${scratch}/interrupted" 2> /dev/null &
 server=$!
+
+sleep 1
+kill -INT "${server}"
+sleep 0.3
 
 echo "${scratch}/loop.so" >&5
 sleep 1
