@@ -1,4 +1,3 @@
-| `host.working_set_bytes` | `double (void)` | the resident set, read from `/proc/self/statm`; 0 where it cannot be read |
 # ghul-llvm
 
 The tool the [ghūl](https://ghul.dev) compiler runs to turn the LLVM IR it
@@ -311,6 +310,7 @@ A host operation's C signature follows from its declaration:
 | `host.sleep` | `void (int32_t)` | waits for at least that many milliseconds; zero or less returns at once |
 | `host.is_terminal` | `bool (int32_t)` | whether standard stream 0, 1 or 2 is a terminal |
 | `host.process_begin` | `void (file_name)` | starts a command; a name with no `/` is found on the `PATH` |
+| `host.working_set_bytes` | `double (void)` | the resident set, read from `/proc/self/statm`; 0 where it cannot be read |
 | `host.process_add_argument` | `void (argument)` | adds the next argument |
 | `host.process_run` | `int32_t (void)` | runs the command to completion, standard input shared, standard output and error captured; the exit status, 128 plus the signal for one that was killed, or -1 where it could not start |
 | `host.process_failure` | `int32_t (void)` | why the last run could not start: 0 it did, 1 the program was not found, 2 anything else |
