@@ -1,3 +1,4 @@
+| `host.working_set_bytes` | `double (void)` | the resident set, read from `/proc/self/statm`; 0 where it cannot be read |
 # ghul-llvm
 
 The tool the [ghūl](https://ghul.dev) compiler runs to turn the LLVM IR it

@@ -8,6 +8,7 @@ declare double @$ghul_host_math_floor(double)
 declare double @$ghul_host_monotonic_milliseconds()
 declare void @$ghul_host_sleep(i32)
 declare i1 @$ghul_host_is_terminal(i32)
+declare double @$ghul_host_working_set_bytes()
 declare i32 @$ghul_host_random_u32()
 
 @$ghul_abi_4 = external constant i32
@@ -49,7 +50,12 @@ sleep:
 terminal:
   ; No stream numbered 7, and the answer is false rather than a fault.
   %odd = call i1 @$ghul_host_is_terminal(i32 7)
-  br i1 %odd, label %fail_8, label %random
+  br i1 %odd, label %fail_8, label %memory
+
+memory:
+  %resident = call double @$ghul_host_working_set_bytes()
+  %resident_ok = fcmp ogt double %resident, 0.0
+  br i1 %resident_ok, label %random, label %fail_9
 
 random:
   ; Two draws of 32 bits agree once in four billion runs.
@@ -82,4 +88,6 @@ fail_7:
   ret i32 7
 fail_8:
   ret i32 8
+fail_9:
+  ret i32 9
 }
