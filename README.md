@@ -307,6 +307,7 @@ A host operation's C signature follows from its declaration:
 | `host.stdin_read_line` | `void *(void)` | without its ending (`\n`, `\r\n` or `\r`); `NULL` at the end |
 | `host.stdin_read_to_end` | `void *(void)` | everything left, possibly empty |
 | `host.monotonic_milliseconds` | `double (void)` | since the program started |
+| `host.working_set_bytes` | `double (void)` | the resident set, read from `/proc/self/statm`; 0 where it cannot be read |
 | `host.sleep` | `void (int32_t)` | waits for at least that many milliseconds; zero or less returns at once |
 | `host.is_terminal` | `bool (int32_t)` | whether standard stream 0, 1 or 2 is a terminal |
 | `host.process_begin` | `void (file_name)` | starts a command; a name with no `/` is found on the `PATH` |

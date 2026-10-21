@@ -5,6 +5,7 @@
 
 #include "internal.h"
 
+#include <fcntl.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -140,6 +141,35 @@ void $ghul_host_sleep(int32_t milliseconds) {
 
     while (nanosleep(&remaining, &remaining) != 0 && errno == EINTR) {
     }
+}
+
+/* The resident set from /proc/self/statm, whose second field is a count of
+ * pages. Reading it collects nothing. 0 where the file cannot be read. */
+double $ghul_host_working_set_bytes(void) {
+    char text[128];
+    int file = open("/proc/self/statm", O_RDONLY | O_CLOEXEC);
+
+    if (file < 0) {
+        return 0.0;
+    }
+
+    ssize_t got = read(file, text, sizeof text - 1);
+
+    close(file);
+
+    if (got <= 0) {
+        return 0.0;
+    }
+
+    text[got] = 0;
+
+    char *rest = NULL;
+
+    strtoull(text, &rest, 10);
+
+    unsigned long long pages = strtoull(rest, NULL, 10);
+
+    return (double)pages * (double)sysconf(_SC_PAGESIZE);
 }
 
 int32_t $ghul_host_random_u32(void) {

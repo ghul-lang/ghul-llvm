@@ -196,6 +196,10 @@ void $ghul_host_sleep(int32_t milliseconds);
 /* Whether the given standard stream (0 input, 1 output, 2 error) is a terminal. */
 bool $ghul_host_is_terminal(int32_t stream);
 
+/* The bytes of memory the process occupies: its resident set. Collects
+ * nothing; 0 where the system cannot say. */
+double $ghul_host_working_set_bytes(void);
+
 /*
  * Running another program. process_begin starts a command with the program
  * to run, found on the PATH where it names no directory, and
