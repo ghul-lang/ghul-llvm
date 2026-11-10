@@ -263,6 +263,9 @@ static int64_t now_ms(void) {
 }
 
 bool $ghul_host_stdin_pending(void) {
+    /* What was written before asking is seen by whoever is to answer. */
+    $libghul_flush_output();
+
     while (!ready() && !at_end && readable(0)) {
         take_available();
     }
