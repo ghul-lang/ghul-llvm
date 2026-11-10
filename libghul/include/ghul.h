@@ -164,6 +164,9 @@ void *$ghul_caught(void *unwind_header);
  */
 void $ghul_host_write(const uint16_t *chars, int32_t length, int32_t stream);
 
+/* Writes what standard output holds; standard error (2) holds nothing. */
+void $ghul_host_flush(int32_t stream);
+
 /* The command-line arguments, not counting the program's own name. */
 int32_t $ghul_host_argument_count(void);
 void *$ghul_host_argument(int32_t index);

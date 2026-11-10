@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines pending pending-long-line characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -240,6 +240,14 @@ check "lines end at \\n, \\r\\n and \\r, and at the end of the input" \
     "$(printf '>one\n>two\n>three\n>last')" \
     "$(printf 'one\r\ntwo\rthree\nlast' | ./lines)"
 check "an empty input has no lines" "" "$(./lines </dev/null)"
+
+sleep 4 | ./flush > flush.out &
+flushing=$!
+sleep 0.7
+check "output is written when the program flushes it" "flushed" "$(cat flush.out)"
+sleep 1.5
+check "output is written when the program polls standard input" "$(printf 'flushed\npolled')" "$(cat flush.out)"
+wait "$flushing"
 
 check "the end of an empty input is pending until it is read, and waited for every time" \
     "WPEpW" "$(./pending </dev/null)"

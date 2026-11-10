@@ -1,8 +1,9 @@
 /*
  * Standard output and standard error. Output is buffered and written when
- * the buffer fills, before anything goes to standard error, before standard
- * input is read, and at exit, so the two streams interleave in the order
- * the program wrote them. Standard error is written as it comes.
+ * the buffer fills, when the program flushes it, before anything goes to
+ * standard error, before standard input is read or polled, and at exit, so
+ * the two streams interleave in the order the program wrote them. Standard
+ * error is written as it comes.
  */
 
 #include "internal.h"
@@ -45,6 +46,13 @@ static void write_all(int fd, const char *bytes, size_t length) {
 void $libghul_flush_output(void) {
     write_all(1, buffer, buffered);
     buffered = 0;
+}
+
+void $ghul_host_flush(int32_t stream) {
+    /* Standard error is written as it comes, so only output waits. */
+    if (stream != 2) {
+        $libghul_flush_output();
+    }
 }
 
 static void write_stdout(const uint16_t *chars, int32_t length) {

@@ -297,6 +297,7 @@ A host operation's C signature follows from its declaration:
 | operation | C signature | notes |
 |---|---|---|
 | `host.write` | `void (const uint16_t *, int32_t, int32_t stream)` | UTF-8 to standard output (stream 1) or standard error (2); any other stream is standard output. Output is buffered and flushed before standard error is written and before input is read |
+| `host.flush` | `void (int32_t stream)` | writes what standard output holds; standard error is never held |
 | `host.argument_count` | `int32_t (void)` | not counting the program's name |
 | `host.argument` | `void *(int32_t)` | |
 | `host.environment_count` | `int32_t (void)` | the environment as it was at start |
