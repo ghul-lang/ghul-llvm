@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory lines characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow finalizer; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines pending characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow finalizer; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -225,6 +225,10 @@ status=0
 check "identity hashes of objects of one size spread across a map's buckets" 0 "${status}"
 
 status=0
+./heap || status=$?
+check "the heap in use counts what is reachable, after a collection and without one" 0 "${status}"
+
+status=0
 ./memory || status=$?
 check "memcpy, memmove and memset are right at every size, alignment and overlap" 0 "${status}"
 
@@ -236,6 +240,18 @@ check "lines end at \\n, \\r\\n and \\r, and at the end of the input" \
     "$(printf '>one\n>two\n>three\n>last')" \
     "$(printf 'one\r\ntwo\rthree\nlast' | ./lines)"
 check "an empty input has no lines" "" "$(./lines </dev/null)"
+
+check "the end of an empty input is pending until it is read, and waited for every time" \
+    "WPEpW" "$(./pending </dev/null)"
+check "a line is pending once it is whole, and so is a last line cut off by the end" \
+    "$(printf 'WP>one\nWP>two\nWPEpW')" "$(printf 'one\ntwo' | ./pending)"
+check "a line arriving later is waited for, and a line split across writes is whole only when ended" \
+    "$(printf 'WP>one\nWP>two\nWPEpW')" \
+    "$( (printf 'one\n'; sleep 0.05; printf 'tw'; sleep 0.05; printf 'o\n') | ./pending)"
+status=0
+idle="$(sleep 2 | ./pending)" || status=$?
+check "a wait with nothing to read times out with nothing pending" "wp" "${idle}"
+check "a timed-out wait is answered as one" 3 "${status}"
 
 status=0
 rest="$(printf 'xab\342\202\254c' | ./characters)" || status=$?

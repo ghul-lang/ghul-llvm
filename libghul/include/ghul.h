@@ -187,6 +187,16 @@ int32_t $ghul_host_stdin_peek(void);
 void *$ghul_host_stdin_read_line(void);
 void *$ghul_host_stdin_read_to_end(void);
 
+/*
+ * Whether a read of standard input would return without waiting: a whole
+ * line is there, or the input has ended and no read has answered so yet.
+ * Never waits and takes nothing. wait waits up to the given number of
+ * milliseconds for the same, zero or less waiting indefinitely, and answers
+ * whether it came; it answers true at the end of the input every time.
+ */
+bool $ghul_host_stdin_pending(void);
+bool $ghul_host_stdin_wait(int32_t timeout_ms);
+
 /* Milliseconds since the program started, from a clock that never goes back. */
 double $ghul_host_monotonic_milliseconds(void);
 
@@ -199,6 +209,9 @@ bool $ghul_host_is_terminal(int32_t stream);
 /* The bytes of memory the process occupies: its resident set. Collects
  * nothing; 0 where the system cannot say. */
 double $ghul_host_working_set_bytes(void);
+
+/* The bytes in use on the collected heap, collecting first where asked. */
+double $ghul_host_heap_bytes(bool force_full_collection);
 
 /*
  * Running another program. process_begin starts a command with the program
