@@ -74,3 +74,13 @@ void $ghul_register_finalizer(void *object, void (*finalizer)(void *object)) {
        still finalized; finalizable objects in a longer cycle are not. */
     GC_REGISTER_FINALIZER_IGNORE_SELF(object, run_finalizer, (void *)finalizer, NULL, NULL);
 }
+
+double $ghul_host_heap_bytes(bool force_full_collection) {
+    if (force_full_collection) {
+        GC_gcollect();
+    }
+
+    /* The heap less its free blocks: what the program holds, and what the
+       collector has not yet reclaimed unless it has just collected. */
+    return (double)(GC_get_heap_size() - GC_get_free_bytes());
+}

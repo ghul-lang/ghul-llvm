@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory lines pending characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow finalizer; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines pending characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow finalizer; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -223,6 +223,10 @@ check "a clone is a separate copy of the same kind, with its own identity" 0 "${
 status=0
 ./identity-hash-spread || status=$?
 check "identity hashes of objects of one size spread across a map's buckets" 0 "${status}"
+
+status=0
+./heap || status=$?
+check "the heap in use counts what is reachable, after a collection and without one" 0 "${status}"
 
 status=0
 ./memory || status=$?

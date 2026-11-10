@@ -210,6 +210,9 @@ bool $ghul_host_is_terminal(int32_t stream);
  * nothing; 0 where the system cannot say. */
 double $ghul_host_working_set_bytes(void);
 
+/* The bytes in use on the collected heap, collecting first where asked. */
+double $ghul_host_heap_bytes(bool force_full_collection);
+
 /*
  * Running another program. process_begin starts a command with the program
  * to run, found on the PATH where it names no directory, and

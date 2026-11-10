@@ -310,6 +310,7 @@ A host operation's C signature follows from its declaration:
 | `host.stdin_wait` | `bool (int32_t)` | waits up to that many milliseconds (zero or less: indefinitely) for what `stdin_pending` answers; true at the end of the input every time |
 | `host.monotonic_milliseconds` | `double (void)` | since the program started |
 | `host.working_set_bytes` | `double (void)` | the resident set, read from `/proc/self/statm`; 0 where it cannot be read |
+| `host.heap_bytes` | `double (bool)` | the bytes in use on the collected heap, after a full collection where the argument is true |
 | `host.sleep` | `void (int32_t)` | waits for at least that many milliseconds; zero or less returns at once |
 | `host.is_terminal` | `bool (int32_t)` | whether standard stream 0, 1 or 2 is a terminal |
 | `host.process_begin` | `void (file_name)` | starts a command; a name with no `/` is found on the `PATH` |
