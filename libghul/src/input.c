@@ -23,6 +23,12 @@ static size_t byte_count;
 static $libghul_utf16 decoded;
 static int32_t taken;
 
+/*
+ * How far has_line has looked: the code units from taken up to here hold no
+ * line ending, so a poll while a long line arrives looks at each unit once.
+ */
+static int32_t scanned;
+
 static int at_end;
 
 /*
@@ -60,6 +66,7 @@ static int fill(void) {
 
     decoded.length = 0;
     taken = 0;
+    scanned = 0;
 
     while (decoded.length == 0) {
         ssize_t got = read(0, bytes + byte_count, READ_SIZE);
@@ -164,11 +171,14 @@ void *$ghul_host_stdin_read_to_end(void) {
 
 /* Whether the code units not yet taken hold a whole line. */
 static int has_line(void) {
-    for (int32_t i = taken; i < decoded.length; i++) {
+    for (int32_t i = scanned > taken ? scanned : taken; i < decoded.length; i++) {
         if (decoded.chars[i] == '\n' || decoded.chars[i] == '\r') {
+            scanned = i;
             return 1;
         }
     }
+
+    scanned = decoded.length;
 
     return 0;
 }
@@ -212,6 +222,7 @@ static void take_available(void) {
         }
 
         decoded.length -= taken;
+        scanned = scanned > taken ? scanned - taken : 0;
         taken = 0;
     }
 

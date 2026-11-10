@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines pending characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files null null-wild null-unhandled overflow finalizer; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines pending pending-long-line characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -248,6 +248,12 @@ check "a line is pending once it is whole, and so is a last line cut off by the 
 check "a line arriving later is waited for, and a line split across writes is whole only when ended" \
     "$(printf 'WP>one\nWP>two\nWPEpW')" \
     "$( (printf 'one\n'; sleep 0.05; printf 'tw'; sleep 0.05; printf 'o\n') | ./pending)"
+status=0
+head -c 33554432 /dev/zero | tr '\0' x > long-line.in
+echo >> long-line.in
+timeout 10 ./pending-long-line < long-line.in || status=$?
+check "a 32 MiB line polled for as it arrives is read in under ten seconds" 0 "${status}"
+
 status=0
 idle="$(sleep 2 | ./pending)" || status=$?
 check "a wait with nothing to read times out with nothing pending" "wp" "${idle}"
@@ -334,6 +340,14 @@ expected_files="$(printf '%s\n' "${scratch}" 2 0 0 0 1 "hello world" 0 replaced 
     0 0 0 2 \
     0 2 0)"
 check "files are written, read, listed and deleted as .NET does" "${expected_files}" "$(./files)"
+
+mkdir -p listing-test/directory
+: > listing-test/file
+ln -s directory listing-test/link-to-directory
+ln -s file listing-test/link-to-file
+ln -s nowhere listing-test/broken-link
+check "a link to a directory lists as a directory, and any other entry as a file" \
+    "$(printf '%s\n' 2 directory link-to-directory 3 broken-link file link-to-file)" "$(./listing)"
 
 # Reads through null: a test folded into the read and a read nothing tested
 # both throw the program's null-reference exception, unoptimised and

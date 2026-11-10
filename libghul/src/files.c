@@ -488,20 +488,26 @@ int32_t $ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool
             continue;
         }
 
-        char *child = malloc(base + strlen(entry->d_name) + 2);
+        int is_directory = entry->d_type == DT_DIR;
 
-        if (!child) {
-            $libghul_fail("Out of memory.\n");
+        /* A link is followed, so a link to a directory counts as one, and a
+           file system that does not say what an entry is is asked. */
+        if (entry->d_type == DT_LNK || entry->d_type == DT_UNKNOWN) {
+            char *child = malloc(base + strlen(entry->d_name) + 2);
+
+            if (!child) {
+                $libghul_fail("Out of memory.\n");
+            }
+
+            strcpy(child, path);
+            child[base] = '/';
+            strcpy(child + base + 1, entry->d_name);
+
+            struct stat status;
+            is_directory = stat(child, &status) == 0 && S_ISDIR(status.st_mode);
+
+            free(child);
         }
-
-        strcpy(child, path);
-        child[base] = '/';
-        strcpy(child + base + 1, entry->d_name);
-
-        struct stat status;
-        int is_directory = stat(child, &status) == 0 && S_ISDIR(status.st_mode);
-
-        free(child);
 
         if (is_directory != (int)directories) {
             continue;
