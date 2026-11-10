@@ -306,6 +306,8 @@ A host operation's C signature follows from its declaration:
 | `host.stdin_peek` | `int32_t (void)` | the same, without taking it |
 | `host.stdin_read_line` | `void *(void)` | without its ending (`\n`, `\r\n` or `\r`); `NULL` at the end |
 | `host.stdin_read_to_end` | `void *(void)` | everything left, possibly empty |
+| `host.stdin_pending` | `bool (void)` | whether a read would not wait: a whole line is there, or the end is there and not yet read. Never waits |
+| `host.stdin_wait` | `bool (int32_t)` | waits up to that many milliseconds (zero or less: indefinitely) for what `stdin_pending` answers; true at the end of the input every time |
 | `host.monotonic_milliseconds` | `double (void)` | since the program started |
 | `host.working_set_bytes` | `double (void)` | the resident set, read from `/proc/self/statm`; 0 where it cannot be read |
 | `host.sleep` | `void (int32_t)` | waits for at least that many milliseconds; zero or less returns at once |

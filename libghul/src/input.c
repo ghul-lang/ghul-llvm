@@ -7,6 +7,8 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <poll.h>
+#include <time.h>
 #include <unistd.h>
 
 #define READ_SIZE 4096
@@ -22,6 +24,13 @@ static $libghul_utf16 decoded;
 static int32_t taken;
 
 static int at_end;
+
+/*
+ * Whether a read has answered the end of the input to the program, after
+ * which nothing is pending. A line cut off by the end does not count: the
+ * read after it answers the end without waiting, so the end is still pending.
+ */
+static int end_read;
 
 /* How many bytes at the end of `bytes` start a UTF-8 sequence not yet complete. */
 static size_t incomplete_tail(void) {
@@ -85,7 +94,8 @@ static int fill(void) {
     return 1;
 }
 
-int32_t $ghul_host_stdin_peek(void) {
+/* The next code unit, or -1 at the end of the input, without taking it. */
+static int32_t peek_unit(void) {
     if (taken == decoded.length && !fill()) {
         return -1;
     }
@@ -93,8 +103,8 @@ int32_t $ghul_host_stdin_peek(void) {
     return decoded.chars[taken];
 }
 
-int32_t $ghul_host_stdin_read(void) {
-    int32_t unit = $ghul_host_stdin_peek();
+static int32_t read_unit(void) {
+    int32_t unit = peek_unit();
 
     if (unit >= 0) {
         taken++;
@@ -103,22 +113,40 @@ int32_t $ghul_host_stdin_read(void) {
     return unit;
 }
 
+/* An answer of the end of the input, after which the end is no longer pending. */
+static int32_t answer(int32_t unit) {
+    if (unit < 0) {
+        end_read = 1;
+    }
+
+    return unit;
+}
+
+int32_t $ghul_host_stdin_peek(void) {
+    return answer(peek_unit());
+}
+
+int32_t $ghul_host_stdin_read(void) {
+    return answer(read_unit());
+}
+
 void *$ghul_host_stdin_read_line(void) {
     $libghul_utf16 line = {0};
 
-    int32_t unit = $ghul_host_stdin_read();
+    int32_t unit = read_unit();
 
     if (unit < 0) {
+        end_read = 1;
         return NULL;
     }
 
     while (unit >= 0 && unit != '\n' && unit != '\r') {
         $libghul_utf16_add(&line, (uint16_t)unit);
-        unit = $ghul_host_stdin_read();
+        unit = read_unit();
     }
 
-    if (unit == '\r' && $ghul_host_stdin_peek() == '\n') {
-        $ghul_host_stdin_read();
+    if (unit == '\r' && peek_unit() == '\n') {
+        read_unit();
     }
 
     return $libghul_utf16_make_string(&line);
@@ -127,9 +155,137 @@ void *$ghul_host_stdin_read_line(void) {
 void *$ghul_host_stdin_read_to_end(void) {
     $libghul_utf16 rest = {0};
 
-    for (int32_t unit = $ghul_host_stdin_read(); unit >= 0; unit = $ghul_host_stdin_read()) {
+    for (int32_t unit = read_unit(); unit >= 0; unit = read_unit()) {
         $libghul_utf16_add(&rest, (uint16_t)unit);
     }
 
     return $libghul_utf16_make_string(&rest);
+}
+
+/* Whether the code units not yet taken hold a whole line. */
+static int has_line(void) {
+    for (int32_t i = taken; i < decoded.length; i++) {
+        if (decoded.chars[i] == '\n' || decoded.chars[i] == '\r') {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/*
+ * Whether a read would return without waiting for more input: a whole line
+ * is decoded, or the input has ended and a read has not yet answered so.
+ */
+static int ready(void) {
+    return has_line() || (at_end && !end_read);
+}
+
+/*
+ * Waits up to `timeout_ms` for standard input to be readable, without
+ * reading it; negative waits indefinitely. Answers whether it is readable,
+ * which includes the input having ended.
+ */
+static int readable(int timeout_ms) {
+    struct pollfd fd = { .fd = 0, .events = POLLIN };
+
+    for (;;) {
+        int got = poll(&fd, 1, timeout_ms);
+
+        if (got < 0 && errno == EINTR) {
+            continue;
+        }
+
+        /* An error on the descriptor is for the read to report as the end. */
+        return got != 0;
+    }
+}
+
+/*
+ * Reads what one read of standard input gives, which poll has said will not
+ * wait, and decodes it after what is not yet taken.
+ */
+static void take_available(void) {
+    if (taken > 0) {
+        for (int32_t i = taken; i < decoded.length; i++) {
+            decoded.chars[i - taken] = decoded.chars[i];
+        }
+
+        decoded.length -= taken;
+        taken = 0;
+    }
+
+    ssize_t got;
+
+    do {
+        got = read(0, bytes + byte_count, READ_SIZE);
+    } while (got < 0 && errno == EINTR);
+
+    if (got <= 0) {
+        at_end = 1;
+
+        $libghul_utf8_decode(bytes, byte_count, &decoded);
+        byte_count = 0;
+
+        return;
+    }
+
+    byte_count += (size_t)got;
+
+    size_t keep = incomplete_tail();
+
+    $libghul_utf8_decode(bytes, byte_count - keep, &decoded);
+
+    for (size_t i = 0; i < keep; i++) {
+        bytes[i] = bytes[byte_count - keep + i];
+    }
+
+    byte_count = keep;
+}
+
+static int64_t now_ms(void) {
+    struct timespec now;
+
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    return (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
+}
+
+bool $ghul_host_stdin_pending(void) {
+    while (!ready() && !at_end && readable(0)) {
+        take_available();
+    }
+
+    return ready();
+}
+
+bool $ghul_host_stdin_wait(int32_t timeout_ms) {
+    /* A prompt written without a newline is seen before the wait. */
+    $libghul_flush_output();
+
+    int64_t deadline = timeout_ms > 0 ? now_ms() + timeout_ms : 0;
+
+    for (;;) {
+        if (ready() || at_end) {
+            return true;
+        }
+
+        int remaining = -1;
+
+        if (timeout_ms > 0) {
+            int64_t left = deadline - now_ms();
+
+            if (left <= 0) {
+                return false;
+            }
+
+            remaining = (int)left;
+        }
+
+        if (!readable(remaining)) {
+            return false;
+        }
+
+        take_available();
+    }
 }
