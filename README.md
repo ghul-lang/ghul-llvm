@@ -312,6 +312,8 @@ A host operation's C signature follows from its declaration:
 | `host.monotonic_milliseconds` | `double (void)` | since the program started |
 | `host.working_set_bytes` | `double (void)` | the resident set, read from `/proc/self/statm`; 0 where it cannot be read |
 | `host.heap_bytes` | `double (bool)` | the bytes in use on the collected heap, after a full collection where the argument is true |
+| `host.gc_collect_when_idle` | `bool (void)` | a full collection that gives up as soon as standard input has something to read, skipped where less than 32 MB has been allocated since the last; true when it finished or was skipped |
+| `host.gc_set_free_space_divisor` | `void (int32_t)` | the collector collects after allocating about the heap's size divided by this (default 3); zero or less changes nothing |
 | `host.sleep` | `void (int32_t)` | waits for at least that many milliseconds; zero or less returns at once |
 | `host.is_terminal` | `bool (int32_t)` | whether standard stream 0, 1 or 2 is a terminal |
 | `host.process_begin` | `void (file_name)` | starts a command; a name with no `/` is found on the `PATH` |

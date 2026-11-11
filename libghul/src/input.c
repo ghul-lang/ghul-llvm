@@ -7,6 +7,7 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <gc.h>
 #include <poll.h>
 #include <time.h>
 #include <unistd.h>
@@ -302,4 +303,33 @@ bool $ghul_host_stdin_wait(int32_t timeout_ms) {
 
         take_available();
     }
+}
+
+/*
+ * Whether input is waiting to be read: a whole line decoded, the input
+ * ended, or bytes readable on the descriptor. Polled at most once every 64
+ * calls, since the collector asks between every few pages it marks.
+ */
+static int stop_for_input(void) {
+    static unsigned calls;
+
+    if ((++calls & 63) != 0) {
+        return 0;
+    }
+
+    return ready() || at_end || readable(0);
+}
+
+/* The allocation since the last collection below which an idle collection
+   is not worth starting. */
+#define IDLE_COLLECTION_MINIMUM_BYTES ((size_t)32 << 20)
+
+bool $ghul_host_gc_collect_when_idle(void) {
+    /* Giving up when input arrives means a request is never held behind
+       a collection nobody asked for. */
+    if (GC_get_bytes_since_gc() < IDLE_COLLECTION_MINIMUM_BYTES) {
+        return true;
+    }
+
+    return GC_try_to_collect(stop_for_input) != 0;
 }

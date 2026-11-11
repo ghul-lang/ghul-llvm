@@ -217,6 +217,22 @@ double $ghul_host_working_set_bytes(void);
 double $ghul_host_heap_bytes(bool force_full_collection);
 
 /*
+ * A full collection for a program with nothing to do: it gives up as soon as
+ * standard input has something to read, and does nothing where less than
+ * 32 MB has been allocated since the last collection. True when it finished
+ * or had nothing worth doing.
+ */
+bool $ghul_host_gc_collect_when_idle(void);
+
+/*
+ * How eagerly the collector grows the heap rather than collecting: it
+ * collects after allocating about the heap's size divided by this. Larger
+ * collects more often in a smaller heap; the collector's default is 3. Zero
+ * or less changes nothing.
+ */
+void $ghul_host_gc_set_free_space_divisor(int32_t divisor);
+
+/*
  * Running another program. process_begin starts a command with the program
  * to run, found on the PATH where it names no directory, and
  * process_add_argument adds each argument. process_run runs the command to
