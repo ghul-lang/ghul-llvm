@@ -47,6 +47,8 @@ constexpr const char *usage_text =
     "  -l <name>, -l<name>   link against lib<name>.a\n"
     "  --sysroot=<dir>       where the C runtime is (default: lib/" GHUL_LLVM_TRIPLE "\n"
     "                        beside the directory ghul-llvm is in)\n"
+    "  --parallel-gc         link the collector that marks with several threads\n"
+    "                        (see README.md)\n"
     "  -v, --verbose         print the linker command line\n"
     "  --version             print the version and exit\n"
     "  --abi-version         print the version of the libghul ABI and exit\n"
@@ -165,6 +167,8 @@ Parsed parse_options(int argc, char **argv) {
             }
 
             options.libraries.push_back(value);
+        } else if (arg == "--parallel-gc") {
+            options.parallel_gc = true;
         } else if (arg == "-v" || arg == "--verbose") {
             options.verbose = true;
         } else if (starts_with(arg, "-") && arg != "-") {

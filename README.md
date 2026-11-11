@@ -17,7 +17,7 @@ ghul-llvm [options] program.ll -L <library dir> -l<library> -o program
 4. Links it with LLD, statically, against the libraries it is given and
    what ships with the tool: libghul (`libghul.a`), ghūl's native support
    library; libtommath (`libtommath.a`) for large bigints; the Boehm garbage
-   collector (`libgc.a`); LLVM's unwinder
+   collector (`libgc.a`, or `libgc-parallel.a` with `--parallel-gc`); LLVM's unwinder
    (`libunwind.a`); musl's start files and C library; and LLVM's compiler-rt
    builtins. Nothing is read from the system it runs on.
 
@@ -36,6 +36,7 @@ same architecture.
 | `--cpu=<cpu>` | the CPU to generate code for; `x86-64-v3` (AVX2, 2013 and later) by default |
 | `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`) |
 | `--sysroot=<dir>` | where the C runtime is; by default `lib/<triple>` beside `bin/` |
+| `--parallel-gc` | link the collector that marks with several threads (below) |
 | `-v` | print the linker command line |
 | `--abi-version` | print the version of the libghul ABI, below |
 | `--version`, `--help` | |
@@ -43,6 +44,16 @@ same architecture.
 Objects (`.o`) and archives (`.a`) named on the command line are linked as
 they are. Exit status is 0 on success, 1 when the input could not be built,
 and 2 for a usage error.
+
+`--parallel-gc` links `libgc-parallel.a`, the collector built with marker
+threads, in place of the single-threaded `libgc.a`. The program starts the
+markers when it starts: as many as there are processors, up to four, or
+`GC_MARKERS` of them where that is set. It is for programs that keep a large
+heap: on the ghūl compiler's own build, with about 500 MB live, a full mark
+falls from about 350 ms to about 150 ms with four markers. It is not for
+general programs yet. A small one starts with about 7 MB resident rather
+than under 1 MB, and one that allocates a lot of short-lived objects ran
+about 50% slower.
 
 ## Releases
 

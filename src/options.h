@@ -43,6 +43,10 @@ struct Options {
     std::vector<std::string> library_paths;
     std::vector<std::string> libraries;
 
+    // Link the collector built with marker threads, libgc-parallel.a,
+    // rather than the single-threaded one.
+    bool parallel_gc = false;
+
     // Keep the intermediate files beside the output.
     bool keep = false;
 
