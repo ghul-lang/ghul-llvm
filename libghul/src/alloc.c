@@ -84,3 +84,9 @@ double $ghul_host_heap_bytes(bool force_full_collection) {
        collector has not yet reclaimed unless it has just collected. */
     return (double)(GC_get_heap_size() - GC_get_free_bytes());
 }
+
+void $ghul_host_gc_set_free_space_divisor(int32_t divisor) {
+    if (divisor > 0) {
+        GC_set_free_space_divisor((GC_word)divisor);
+    }
+}

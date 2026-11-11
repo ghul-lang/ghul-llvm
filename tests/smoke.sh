@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector idle-collection scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -279,6 +279,15 @@ check "an empty input reads as its end" 0 "${status}"
 status=0
 (ulimit -v 1048576 && ./collector) || status=$?
 check "the collector reclaims garbage and keeps what is reachable" 0 "${status}"
+
+# An idle collection runs to the end while standard input has nothing to
+# read, and gives up when it has.
+status=0
+./idle-collection < <(sleep 10) || status=$?
+check "an idle collection finishes while no input is waiting" 0 "${status}"
+status=0
+echo waiting | ./idle-collection abandon || status=$?
+check "an idle collection gives up when input is waiting" 0 "${status}"
 
 status=0
 ./scalars || status=$?
