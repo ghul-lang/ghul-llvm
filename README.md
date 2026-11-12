@@ -156,6 +156,7 @@ string objects when libghul asks.
 | `void *$ghul_make_bytes(const uint8_t *bytes, int32_t length)` | builds one of the program's `ubyte[]` arrays; the bytes are valid only during the call |
 | `void $ghul_report_unhandled(void *exception)` | writes `Unhandled exception. <Type>: <message>` and a newline to stream 2 through `$ghul_host_write`; needed by a program that throws |
 | `void *$ghul_make_null_reference(void)` | the exception a read through null throws; a program that does not define it ends with SIGSEGV on one, as without libghul |
+| `void $ghul_exit_sweep(void)` | flushes and closes what the core library still holds open; called once as the program ends: on return from `$ghul_entry`, on exit, and after an unhandled exception is reported, before standard output is flushed; a program that keeps no such state need not define it |
 
 ### What libghul provides
 

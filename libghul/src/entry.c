@@ -11,6 +11,23 @@ extern char **environ;
 
 const int32_t $ghul_abi_4 = GHUL_ABI_VERSION;
 
+/* Defined by a program whose core library keeps state that has to be flushed
+   or closed as the program ends; absent from one that keeps none. */
+extern void $ghul_exit_sweep(void) __attribute__((weak));
+
+void $libghul_exit_sweep(void) {
+    static int swept;
+
+    /* Once: the sweep can end in an exception nothing catches, whose path
+       out sweeps too. */
+    if (swept || !$ghul_exit_sweep) {
+        return;
+    }
+
+    swept = 1;
+    $ghul_exit_sweep();
+}
+
 /* Defined only by the collector built with marker threads, and declared by
    gc.h only for a program built for threads, which libghul is not. */
 extern void GC_set_markers_count(unsigned markers) __attribute__((weak));
@@ -41,8 +58,11 @@ int main(int argc, char **argv) {
     $libghul_arguments_init(argc, argv);
     $libghul_environment_init(environ);
 
-    /* A program that ends by calling exit still has its output written. */
+    /* A program that ends by calling exit still has its output written, after
+       the sweep has written what the program left open: atexit runs the two
+       in the reverse of this order. */
     atexit($libghul_flush_output);
+    atexit($libghul_exit_sweep);
 
     return $ghul_entry();
 }

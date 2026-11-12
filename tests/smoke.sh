@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector idle-collection scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector idle-collection scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer sweep sweep-exit sweep-unhandled; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -336,6 +336,18 @@ status=0
 ./exit >exit.out || status=$?
 check "leaving through the exit host operation keeps its status" 5 "${status}"
 check "leaving through the exit host operation flushes output" "written, no end." "$(cat exit.out)"
+
+status=0
+./sweep >sweep.out || status=$?
+check "the exit sweep runs once on return from the entry" "0 $(printf 'body\nswept')" "${status} $(cat sweep.out)"
+
+status=0
+./sweep-exit >sweep-exit.out || status=$?
+check "the exit sweep runs once on leaving through the exit host operation" "7 $(printf 'body\nswept')" "${status} $(cat sweep-exit.out)"
+
+status=0
+./sweep-unhandled >sweep-unhandled.out 2>/dev/null || status=$?
+check "the exit sweep runs once after an unhandled exception" "134 $(printf 'body\nswept')" "${status} $(cat sweep-unhandled.out)"
 
 # Exceptions thrown through landing pads, unoptimised and optimised: what
 # the unwinder does depends on the code it unwinds through.
