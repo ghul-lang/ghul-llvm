@@ -6,8 +6,8 @@
  * Two directions:
  *
  * - The program defines $ghul_entry, $ghul_make_string, $ghul_make_bytes,
- *   $ghul_report_unhandled and $ghul_make_null_reference, which libghul
- *   calls.
+ *   $ghul_report_unhandled, $ghul_make_null_reference and $ghul_exit_sweep,
+ *   which libghul calls.
  * - libghul defines main, $ghul_alloc, $ghul_alloc_atomic, $ghul_throw,
  *   $ghul_caught, $ghul_personality and one ghul_host_<operation> function per
  *   host operation the core library declares with
@@ -73,6 +73,16 @@ void *$ghul_make_bytes(const uint8_t *bytes, int32_t length);
  * message is laid out. A program that never throws need not define it.
  */
 void $ghul_report_unhandled(void *exception);
+
+/*
+ * Flushes and closes what the program's core library still holds open: files
+ * written and not disposed, descriptors not closed. libghul calls it once as
+ * the program ends, on return from $ghul_entry, on exit, and after an
+ * exception nothing caught has been reported, before standard output is
+ * flushed. It is not called where a host takes an unhandled exception back
+ * to carry on running. A program that keeps no such state need not define it.
+ */
+void $ghul_exit_sweep(void);
 
 /*
  * Makes the exception a read through null throws. libghul calls it when a read

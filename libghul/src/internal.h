@@ -22,6 +22,9 @@ void $libghul_write_signal_backtrace(void *signal_context);
 /* Writes everything still buffered for standard output. */
 void $libghul_flush_output(void);
 
+/* Calls the program's $ghul_exit_sweep, where it defines one, once. */
+void $libghul_exit_sweep(void);
+
 /* Writes a message to standard error and ends the process with failure. */
 _Noreturn void $libghul_fail(const char *message);
 

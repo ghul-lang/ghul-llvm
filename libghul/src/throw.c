@@ -61,6 +61,10 @@ _Noreturn void $ghul_throw(void *exception) {
         siglongjmp(*(sigjmp_buf *)$libghul_unhandled_jump, 1);
     }
 
+    /* _exit skips atexit, so the sweep is called here. */
+    $libghul_exit_sweep();
+    $libghul_flush_output();
+
     _exit(LIBGHUL_FAILURE_STATUS);
 }
 
