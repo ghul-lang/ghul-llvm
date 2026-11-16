@@ -44,11 +44,16 @@ constexpr const char *usage_text =
     "                        the executable, as <output>.bc and <output>.o\n"
     "  --cpu=<cpu>           the CPU to generate code for (default: " GHUL_LLVM_CPU ")\n"
     "  -L <dir>, -L<dir>     add <dir> to the library search path\n"
-    "  -l <name>, -l<name>   link against lib<name>.a\n"
+    "  -l <name>, -l<name>   link against lib<name>.a, or with --dynamic the\n"
+    "                        shared library lib<name>.so\n"
     "  --sysroot=<dir>       where the C runtime is (default: lib/" GHUL_LLVM_TRIPLE "\n"
     "                        beside the directory ghul-llvm is in)\n"
     "  --parallel-gc         link the collector that marks with several threads\n"
     "                        (see README.md)\n"
+    "  --dynamic             link dynamically against the system's glibc and\n"
+    "                        shared libraries (see README.md)\n"
+    "  --find-library=<name> print the shared library --dynamic links for\n"
+    "                        -l<name>, its soname and its version, and exit\n"
     "  -v, --verbose         print the linker command line\n"
     "  --version             print the version and exit\n"
     "  --abi-version         print the version of the libghul ABI and exit\n"
@@ -169,6 +174,10 @@ Parsed parse_options(int argc, char **argv) {
             options.libraries.push_back(value);
         } else if (arg == "--parallel-gc") {
             options.parallel_gc = true;
+        } else if (arg == "--dynamic") {
+            options.dynamic = true;
+        } else if (starts_with(arg, "--find-library=")) {
+            options.find_library = std::string(arg.substr(std::strlen("--find-library=")));
         } else if (arg == "-v" || arg == "--verbose") {
             options.verbose = true;
         } else if (starts_with(arg, "-") && arg != "-") {
@@ -185,6 +194,16 @@ Parsed parse_options(int argc, char **argv) {
         }
     }
 
+    if (options.find_library) {
+        if (options.find_library->empty()) {
+            parsed.exit_status = usage_error("--find-library needs a library name");
+            return parsed;
+        }
+
+        parsed.options = std::move(options);
+        return parsed;
+    }
+
     if (options.input.empty()) {
         parsed.exit_status = usage_error("no input");
         return parsed;
@@ -199,6 +218,16 @@ Parsed parse_options(int argc, char **argv) {
         (!options.link_inputs.empty() || !options.libraries.empty())) {
         parsed.exit_status =
             usage_error("objects, archives and libraries are only used when linking an executable");
+        return parsed;
+    }
+
+    if (options.dynamic && options.emit != Emit::Executable) {
+        parsed.exit_status = usage_error("--dynamic only applies to linking an executable");
+        return parsed;
+    }
+
+    if (options.dynamic && options.parallel_gc) {
+        parsed.exit_status = usage_error("--parallel-gc is not available with --dynamic");
         return parsed;
     }
 

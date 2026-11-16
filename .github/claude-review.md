@@ -15,6 +15,10 @@ takes the textual LLVM IR the compiler writes, verifies it, optimises it with
 the new pass manager, generates an object, and links that with LLD — used as
 a library, in the same process — statically against musl and compiler-rt
 builtins that ship beside it. The result is a statically linked executable.
+With `--dynamic` it links instead against the system's glibc and shared
+libraries, with a glibc build of the same C runtime (`build/gnu.sh`) and a
+start object of its own (`libghul/start/`), and reads nothing else of the
+system's: no C compiler and no C library development package.
 
 The repository also holds libghul (`libghul/`), C linked into every
 program: `main`, allocation from the Boehm collector, throwing and catching

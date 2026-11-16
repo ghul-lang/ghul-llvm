@@ -460,6 +460,99 @@ done
 
 pass "ghul-llvm needs only: ${needed:-nothing}"
 
+# --dynamic links against the system's glibc rather than musl, with the C
+# runtime from lib/<arch>-unknown-linux-gnu and nothing else of the system's
+# but its shared libraries.
+expect_status 0 "links a program dynamically" "${tool}" --dynamic "${tests}/hello.ll" -o hello-dynamic
+check "the dynamically linked program runs and prints" "hello from ghul-llvm" "$(./hello-dynamic)"
+
+loader="$(readelf -l hello-dynamic | sed -n 's/.*Requesting program interpreter: \(.*\)]/\1/p')"
+case "$(uname -m)" in
+x86_64) check "the program names the psABI's dynamic loader" /lib64/ld-linux-x86-64.so.2 "${loader}" ;;
+aarch64) check "the program names the psABI's dynamic loader" /lib/ld-linux-aarch64.so.1 "${loader}" ;;
+esac
+
+check "the program needs only the C library" "libc.so.6" \
+    "$(readelf -d hello-dynamic | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' | tr '\n' ' ' | sed 's/ $//')"
+
+expect_status 0 "a dynamic build of the same input is deterministic" \
+    "${tool}" --dynamic "${tests}/hello.ll" -o hello-dynamic-again
+cmp -s hello-dynamic hello-dynamic-again && pass "dynamic builds are deterministic" || fail "two dynamic builds of the same input differ"
+
+# libghul's programs behave the same linked either way: output, math,
+# exceptions, null references, big integers, the collector and an
+# unhandled exception's report.
+for program in output scalars exceptions null bigint collector unhandled; do
+    expect_status 0 "links ${program} dynamically with libghul" \
+        "${tool}" --dynamic "${libghul_tests}/${program}.ll" support.o -o "${program}-dynamic"
+
+    static_status=0
+    (ulimit -v 1048576 && "./${program}") </dev/null >"${program}.static.out" 2>"${program}.static.err" || static_status=$?
+    dynamic_status=0
+    (ulimit -v 1048576 && "./${program}-dynamic") </dev/null >"${program}.dynamic.out" 2>"${program}.dynamic.err" || dynamic_status=$?
+
+    if [ "${static_status}" = "${dynamic_status}" ] && cmp -s "${program}.static.out" "${program}.dynamic.out" &&
+        cmp -s "${program}.static.err" "${program}.dynamic.err"; then
+        pass "${program} behaves the same linked dynamically"
+    else
+        fail "${program} linked dynamically exited ${dynamic_status}, statically ${static_status}, or wrote something else"
+        diff "${program}.static.err" "${program}.dynamic.err" >&2 || true
+    fi
+done
+
+check "a libghul program needs only the C library and libm" "libc.so.6 libm.so.6" \
+    "$(readelf -d scalars-dynamic | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' | sort | tr '\n' ' ' | sed 's/ $//')"
+
+newest="$(readelf -W --dyn-syms collector-dynamic scalars-dynamic output-dynamic | grep -oE 'GLIBC_[0-9.]+' | sort -V -u | tail -n 1)"
+if [ "$(printf '%s\nGLIBC_2.35\n' "${newest}" | sort -V | tail -n 1)" = "GLIBC_2.35" ]; then
+    pass "a dynamically linked program needs no newer glibc than 2.35 (${newest})"
+else
+    fail "a dynamically linked program needs ${newest}, newer than the build environment's 2.35"
+fi
+
+# A shared library of the system's is found by name, through the runtime
+# file its soname names, so only the runtime package need be installed.
+status=0
+found="$("${tool}" --find-library=z)" || status=$?
+
+if [ "${status}" -eq 0 ]; then
+    IFS=$'\t' read -r zlib_path zlib_soname zlib_version <<<"${found}"
+    check "--find-library names zlib's runtime file by its soname" "libz.so.1" "$(basename "${zlib_path}")"
+    check "--find-library gives zlib's soname" "libz.so.1" "${zlib_soname}"
+
+    expect_status 0 "links a program against the system's zlib" \
+        "${tool}" --dynamic "${tests}/zlib-version.ll" -lz -o zlib-version
+    check "the program runs against zlib, whose version is the one --find-library gives" \
+        "${zlib_version}" "$(./zlib-version)"
+    readelf -d zlib-version | grep -q 'NEEDED.*\[libz.so.1\]' && pass "the program needs libz.so.1" ||
+        fail "the program does not record libz.so.1 as needed"
+else
+    echo "skipped: no zlib on this machine for the shared library checks"
+fi
+
+expect_status 1 "--find-library reports a library that is not there" "${tool}" --find-library=no-such-library
+expect_status 1 "reports a shared library it cannot find" \
+    "${tool}" --dynamic "${tests}/caller.ll" -lno-such-library -o nothing
+
+# A library in a -L directory is linked, and the program says where it is.
+expect_status 0 "builds a shared library to link against" \
+    "${tool}" --emit=obj "${tests}/answer.ll" -o answer-shared.o
+mkdir -p shared
+if ld.lld -shared -soname libanswer.so.2 answer-shared.o -o shared/libanswer.so.2.1 2>/dev/null ||
+    ld -shared -soname libanswer.so.2 answer-shared.o -o shared/libanswer.so.2.1 2>/dev/null; then
+    ln -sf libanswer.so.2.1 shared/libanswer.so.2
+    expect_status 0 "links a shared library found with -L and -l" \
+        "${tool}" --dynamic "${tests}/caller.ll" -L shared -lanswer -o with-shared
+    expect_status 42 "the program finds the shared library where it was linked from" ./with-shared
+    check "--find-library gives the version the file name carries" \
+        "$(readlink -f shared)/libanswer.so.2	libanswer.so.2	2.1" "$("${tool}" --find-library=answer -L "$(readlink -f shared)")"
+else
+    echo "skipped: no linker on this machine to build a shared library with"
+fi
+
+expect_status 2 "refuses --dynamic with --parallel-gc" \
+    "${tool}" --dynamic --parallel-gc "${tests}/hello.ll" -o nothing
+
 glibc="$(objdump -T "${tool}" | grep -oE 'GLIBC_[0-9.]+' | sort -V -u | tail -n 1)"
 echo "ghul-llvm needs ${glibc} or later"
 

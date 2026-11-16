@@ -47,6 +47,15 @@ struct Options {
     // rather than the single-threaded one.
     bool parallel_gc = false;
 
+    // Link dynamically against the system's glibc and its shared libraries,
+    // with the C runtime from lib/<arch>-unknown-linux-gnu, rather than
+    // statically against musl.
+    bool dynamic = false;
+
+    // Rather than build anything, report the shared library a dynamic link
+    // would take for -l<name>.
+    std::optional<std::string> find_library;
+
     // Keep the intermediate files beside the output.
     bool keep = false;
 

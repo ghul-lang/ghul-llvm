@@ -22,7 +22,8 @@ ghul-llvm [options] program.ll -L <library dir> -l<library> -o program
    builtins. Nothing is read from the system it runs on.
 
 The executable it produces is statically linked and runs on any Linux of the
-same architecture.
+same architecture. With `--dynamic` it is linked against the system's glibc
+and shared libraries instead (below).
 
 ## Options
 
@@ -34,9 +35,11 @@ same architecture.
 | `--emit=<kind>` | stop early: `obj`, `asm`, `bc` or `ll` rather than `exe`; or `cell`, a shared object for the cell host (below) |
 | `--keep` | keep the optimised bitcode and the object, as `<output>.bc` and `<output>.o` |
 | `--cpu=<cpu>` | the CPU to generate code for; `x86-64-v3` (AVX2, 2013 and later) by default |
-| `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`) |
+| `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`, or with `--dynamic` the shared library `lib<name>.so`) |
 | `--sysroot=<dir>` | where the C runtime is; by default `lib/<triple>` beside `bin/` |
 | `--parallel-gc` | link the collector that marks with several threads (below) |
+| `--dynamic` | link dynamically against the system's glibc and shared libraries (below) |
+| `--find-library=<name>` | print the shared library `--dynamic` links for `-l<name>`, and exit |
 | `-v` | print the linker command line |
 | `--abi-version` | print the version of the libghul ABI, below |
 | `--version`, `--help` | |
@@ -55,6 +58,46 @@ general programs yet. A small one starts with about 7 MB resident rather
 than under 1 MB, and one that allocates a lot of short-lived objects ran
 about 50% slower.
 
+## Linking dynamically
+
+`--dynamic` links the program against the glibc of the machine it is built on,
+and lets `-l` name the system's shared libraries, so a program can use a C
+library its distribution packages without building it for musl first. Linking
+still needs no C compiler, no C library development package and nothing of the
+system's but its shared libraries:
+
+- The C runtime is `lib/<arch>-unknown-linux-gnu/` beside `bin/`: libghul, the
+  collector, the unwinder, libtommath, libbacktrace and the builtins, built
+  against glibc, and `ghul-start.o`, the program's entry point. It stands in for
+  the C library's start files, and for `atexit`, the one thing libghul takes from
+  glibc's static `libc_nonshared.a`. None of glibc's own files ships.
+- The C library is the machine's `libc.so.6` and `libm.so.6`, found where the
+  dynamic loader finds them, and the dynamic loader the program names is the
+  one the architecture's psABI fixes (`/lib64/ld-linux-x86-64.so.2`,
+  `/lib/ld-linux-aarch64.so.1`).
+- A library named with `-l<name>` is looked for in each `-L` directory, then in
+  the dynamic loader's cache, `/etc/ld.so.cache`, then in the standard library
+  directories. The file linked is the runtime file its soname names, such as
+  `libz.so.1`, so the library's runtime package is enough (`zlib1g`, not
+  `zlib1g-dev`). Where several versions are there, the highest soname wins. A
+  library from a `-L` directory is recorded in the program's run path, so the
+  program finds it when it runs.
+- A library nothing refers to is not recorded as needed. A shared library's
+  own dependencies are left to the dynamic loader when the program starts.
+
+`--find-library=<name>` prints, tab separated, the file `--dynamic` would link
+for `-l<name>`, its soname and the version its file name carries, either of the
+last two possibly empty, and exits with status 1 when there is no such library.
+The file name's version is the library's ABI version, which is its release's
+version for some libraries (zlib's `libz.so.1.3.1`) and not for others
+(SQLite 3's `libsqlite3.so.0.8.6`).
+
+The code is generated for the gnu environment, still for a fixed load address,
+and a program built this way needs glibc 2.35 or later, the build
+environment's, and the libraries it was linked against. It runs on machines
+like the one it was built on, where a statically linked program runs anywhere.
+`--parallel-gc` is not available with `--dynamic` yet.
+
 ## Releases
 
 Each release carries one archive per target, named for the target's triple,
@@ -71,6 +114,7 @@ The archive unpacks to a single directory:
 ghul-llvm-x86_64-unknown-linux-musl/
   bin/ghul-llvm
   lib/x86_64-unknown-linux-musl/   libghul.a libtommath.a libgc.a libunwind.a crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
+  lib/x86_64-unknown-linux-gnu/    libghul.a libtommath.a libgc.a libunwind.a libbacktrace.a libclang_rt.builtins.a ghul-start.o ghul.ld
   licenses/
 ```
 

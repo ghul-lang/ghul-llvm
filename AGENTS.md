@@ -50,10 +50,16 @@ dependency on something only it has.
   target's; `main.cpp` initialises the target's by name. Check the size of
   `out/bin/ghul-llvm` after a change that touches initialisation or LLVM's
   version.
-- **Reading files from the host.** The link must use only the sysroot and
-  the `-L` directories. LLD searches no default paths unless told to, so
+- **Reading files from the host.** A static link must use only the sysroot
+  and the `-L` directories. LLD searches no default paths unless told to, so
   never pass it `--sysroot`, a `-L` it was not given, or a library by bare
-  name.
+  name. A `--dynamic` link reads exactly two kinds of file from the host:
+  the C library's `libc.so.6` and `libm.so.6`, and the shared libraries named
+  with `-l`, each found by `src/libraries.cpp` and passed to LLD by path.
+  Nothing of the C library's development package (its start files,
+  `libc.so` script or `libc_nonshared.a`) may be needed: `libghul/start/`
+  stands in for them, and `build/gnu.sh` fails a build whose gnu runtime
+  refers to `libc_nonshared.a`.
 - **Changing the ABI.** Anything in `ghul.h` that compiled code
   depends on is the contract with the compiler's LLVM backend. A change to
   something already there raises `GHUL_ABI_VERSION`, renames `$ghul_abi_<n>` to match,
