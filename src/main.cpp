@@ -3,11 +3,13 @@
 // executable. See README.md.
 
 #include "compile.h"
+#include "libraries.h"
 #include "link.h"
 #include "options.h"
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
 
 int main(int argc, char **argv) {
@@ -20,6 +22,21 @@ int main(int argc, char **argv) {
     }
 
     const auto &options = *parsed.options;
+
+    // Tab separated, for a build tool to read: the file, its soname and the
+    // version its file name carries, either of the last two possibly empty.
+    if (options.find_library) {
+        auto library = ghul_llvm::find_library(*options.find_library, options.library_paths);
+
+        if (!library) {
+            llvm::errs() << "ghul-llvm: no shared library lib" << *options.find_library
+                         << ".so for this machine was found\n";
+            return 1;
+        }
+
+        llvm::outs() << library->path << "\t" << library->soname << "\t" << library->version << "\n";
+        return 0;
+    }
 
     // Only the target this build generates code for is initialised. LLVM's
     // release libraries carry every backend, and initialising one is what
@@ -50,6 +67,11 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    return ghul_llvm::link(options, llvm::StringRef(object.data(), object.size()), argv[0]) ? 0
-                                                                                            : 1;
+    llvm::StringRef linked(object.data(), object.size());
+
+    if (options.dynamic) {
+        return ghul_llvm::link_dynamic(options, linked, argv[0]) ? 0 : 1;
+    }
+
+    return ghul_llvm::link(options, linked, argv[0]) ? 0 : 1;
 }

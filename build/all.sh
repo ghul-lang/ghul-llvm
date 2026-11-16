@@ -18,6 +18,7 @@ version="${1:-}"
     build/sysroot.sh
     build/tool.sh ${version}
     build/libghul.sh
+    build/gnu.sh
     build/package.sh
 "
 

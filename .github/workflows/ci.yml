@@ -95,6 +95,23 @@ jobs:
           exit 1
         fi
 
+    # A program linked with --dynamic runs on the oldest distributions of
+    # glibc 2.35 and later, against their own shared libraries, which have
+    # only the runtime packages installed.
+    - name: Run a dynamically linked program on older distributions
+      shell: bash
+      run: |
+        set -euo pipefail
+        . build/versions.sh
+        scratch="$(mktemp -d)"
+        tar -xzf "dist/ghul-llvm-${TRIPLE}.tar.gz" -C "${scratch}"
+        tool="${scratch}/ghul-llvm-${TRIPLE}/bin/ghul-llvm"
+        "${tool}" --emit=obj tests/libghul/support.ll -o "${scratch}/support.o"
+        "${tool}" --dynamic tests/libghul/exceptions.ll "${scratch}/support.o" -o "${scratch}/exceptions"
+        "${tool}" --dynamic tests/zlib-version.ll -lz -o "${scratch}/zlib-version"
+        for image in ubuntu:22.04 debian:bookworm-slim; do
+          echo "${image}: zlib $(docker run --rm -v "${scratch}:/p" -w /p "${image}" sh -c './exceptions >/dev/null && ./zlib-version')"
+        done
     - uses: actions/upload-artifact@v7
       with:
         name: archives-${{ matrix.os }}

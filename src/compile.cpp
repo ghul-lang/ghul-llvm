@@ -88,12 +88,13 @@ llvm::CodeGenOptLevel codegen_level(unsigned level) {
     }
 }
 
-// A cell runs inside a glibc host, so its code is generated for the same
-// machine under the gnu environment.
+// A cell runs inside a glibc host, and a dynamically linked program against
+// the system's glibc, so their code is generated for the same machine under
+// the gnu environment.
 std::string target_triple(const Options &options) {
     std::string triple = GHUL_LLVM_TRIPLE;
 
-    if (options.emit == Emit::Cell) {
+    if (options.emit == Emit::Cell || options.dynamic) {
         const std::string musl = "-musl";
         triple.replace(triple.rfind(musl), musl.size(), "-gnu");
     }
@@ -128,8 +129,10 @@ std::unique_ptr<llvm::TargetMachine> target_machine(const Options &options) {
         enable_implicit_null_checks();
     }
 
-    // Executables are linked statically and not as position independent,
-    // so code is generated for a fixed load address. A cell is loaded
+    // Executables are not position independent, whether linked statically or
+    // dynamically, so code is generated for a fixed load address: the fault
+    // map holds absolute addresses, which a position independent executable
+    // would need relocated at load time in a read-only section. A cell is loaded
     // wherever the host puts it and binds its external names to the host's
     // and to other cells', so its code is position independent.
     return std::unique_ptr<llvm::TargetMachine>(target->createTargetMachine(
@@ -144,10 +147,11 @@ bool set_target(const Options &options, llvm::Module &module, llvm::TargetMachin
     const llvm::Triple &ours = machine.getTargetTriple();
     const llvm::Triple &theirs = module.getTargetTriple();
 
-    // A cell may be written for the musl triple the compiler names: only the
-    // machine matters, since the libc is the host's.
-    bool same = options.emit == Emit::Cell ? theirs.getArch() == ours.getArch()
-                                           : theirs.normalize() == ours.normalize();
+    // A cell, or a dynamically linked program, may be written for the musl
+    // triple the compiler names: only the machine matters, since the libc is
+    // the system's.
+    bool same = options.emit == Emit::Cell || options.dynamic ? theirs.getArch() == ours.getArch()
+                                                              : theirs.normalize() == ours.normalize();
 
     if (!theirs.str().empty() && !same) {
         return fail(module.getModuleIdentifier() + " is for " + theirs.str() +

@@ -22,10 +22,13 @@ if [ ! -x "${out}/bin/ghul-llvm" ]; then
 fi
 
 rm -rf "${work}/package"
-mkdir -p "${staging}/bin" "${staging}/lib/${TRIPLE}" "${staging}/licenses"
+gnu_triple="${TRIPLE/-musl/-gnu}"
+
+mkdir -p "${staging}/bin" "${staging}/lib/${TRIPLE}" "${staging}/lib/${gnu_triple}" "${staging}/licenses"
 
 cp "${out}/bin/ghul-llvm" "${staging}/bin/"
 cp "${out}/lib/${TRIPLE}"/* "${staging}/lib/${TRIPLE}/"
+cp "${out}/lib/${gnu_triple}"/* "${staging}/lib/${gnu_triple}/"
 
 # ghul-llvm and libghul, LLVM and LLD (in the tool, and compiler-rt in
 # every program it builds), musl, the collector and libbacktrace (in every

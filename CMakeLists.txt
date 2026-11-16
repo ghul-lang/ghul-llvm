@@ -67,6 +67,7 @@ file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/backend_stubs.cpp" CONTENT "$
 
 add_executable(ghul-llvm
     src/compile.cpp
+    src/libraries.cpp
     src/link.cpp
     src/main.cpp
     src/options.cpp
