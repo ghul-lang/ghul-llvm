@@ -396,28 +396,84 @@ static void *string_of(const char *ascii, size_t length) {
     return $libghul_utf16_make_string(&text);
 }
 
-/* `value` in `radix`, lower case, with a '-' for a negative value. */
-static char *radix_text(const mp_int *value, int radix, size_t *length) {
-    int size;
-    check(mp_radix_size(value, radix, &size));
+/*
+ * The largest power of `radix` a libtommath digit holds, and how many digits
+ * of the text it stands for: one division by it gives that many digits at
+ * once, where libtommath's own conversion divides by the radix once a digit.
+ */
+static mp_digit radix_chunk(int radix, int *digits) {
+    mp_digit chunk = (mp_digit)radix;
+    int count = 1;
 
-    char *text = GC_MALLOC_ATOMIC((size_t)size);
+    while (chunk <= MP_MASK / (mp_digit)radix) {
+        chunk *= (mp_digit)radix;
+        count++;
+    }
+
+    *digits = count;
+    return chunk;
+}
+
+/*
+ * `value` in `radix`, 2 to 16, lower case, with a '-' for a negative value,
+ * NUL-terminated. The digits come from repeated division by radix_chunk's
+ * power, so the work is a pass over the number for every chunk of digits
+ * rather than for every digit, and the length is bounded from the number of
+ * bits rather than counted with a pass of its own.
+ */
+static char *radix_text(const mp_int *value, int radix, size_t *length) {
+    static const char symbols[] = "0123456789abcdef";
+
+    int per_chunk;
+    mp_digit chunk = radix_chunk(radix, &per_chunk);
+
+    /* At most bits / floor(log2(radix)) digits, rounded up, a sign and a NUL. */
+    int log2 = 0;
+
+    while ((2 << log2) <= radix) {
+        log2++;
+    }
+
+    size_t capacity = (size_t)mp_count_bits(value) / (size_t)log2 + 3;
+    char *text = GC_MALLOC_ATOMIC(capacity);
 
     if (!text) {
         $libghul_fail("Out of memory.\n");
     }
 
-    size_t written;
-    check(mp_to_radix(value, text, (size_t)size, &written, radix));
+    size_t at = capacity - 1;
+    text[at] = '\0';
 
-    /* written counts the terminating NUL. */
-    *length = written - 1;
+    mp_int rest;
+    check(mp_init(&rest));
+    check(mp_abs(value, &rest));
 
-    for (size_t i = 0; i < *length; i++) {
-        if (text[i] >= 'A' && text[i] <= 'Z') {
-            text[i] = (char)(text[i] - 'A' + 'a');
-        }
+    if (mp_iszero(&rest)) {
+        text[--at] = '0';
     }
+
+    while (!mp_iszero(&rest)) {
+        mp_digit remainder;
+        check(mp_div_d(&rest, chunk, &rest, &remainder));
+
+        /* A chunk below the top one is written whole, with its leading zeros. */
+        int produced = 0;
+
+        do {
+            text[--at] = symbols[remainder % (mp_digit)radix];
+            remainder /= (mp_digit)radix;
+            produced++;
+        } while (mp_iszero(&rest) ? remainder != 0 : produced < per_chunk);
+    }
+
+    mp_clear(&rest);
+
+    if (mp_isneg(value)) {
+        text[--at] = '-';
+    }
+
+    *length = capacity - 1 - at;
+    memmove(text, text + at, *length + 1);
 
     return text;
 }
