@@ -1,5 +1,6 @@
 /*
- * Threads, mutexes and a per-thread slot for the program's own state.
+ * Threads, mutexes, condition variables and a per-thread slot for the
+ * program's own state.
  *
  * Every thread is started through the collector, so its stack and registers
  * are scanned. The collector does not scan thread-local storage, so anything
@@ -14,6 +15,8 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <errno.h>
+#include <time.h>
 
 /* Defined by the program: calls the function value `action`, which takes
    nothing and answers nothing. A program that starts no thread need not
@@ -176,4 +179,73 @@ bool $ghul_host_mutex_unlock(void *locked) {
     atomic_store(&m->owner, 0);
     pthread_mutex_unlock(&m->mutex);
     return true;
+}
+
+/* --- Condition variables -------------------------------------------------- */
+
+typedef struct {
+    pthread_cond_t condition;
+} condition;
+
+void *$ghul_host_condition_new(void) {
+    /* Nothing in a condition variable points into the heap. */
+    condition *made = GC_MALLOC_ATOMIC(sizeof(condition));
+    pthread_condattr_t attributes;
+
+    if (!made) {
+        $libghul_fail("Out of memory.\n");
+    }
+
+    /* Timeouts are measured on the monotonic clock, so setting the
+       system clock neither cuts a wait short nor stretches it. */
+    pthread_condattr_init(&attributes);
+    pthread_condattr_setclock(&attributes, CLOCK_MONOTONIC);
+    pthread_cond_init(&made->condition, &attributes);
+    pthread_condattr_destroy(&attributes);
+    return made;
+}
+
+int32_t $ghul_host_condition_wait(void *waited, void *locked, int64_t timeout_ms) {
+    condition *c = waited;
+    mutex *m = locked;
+    int64_t me = $ghul_host_thread_id();
+    int result = 0;
+
+    if (atomic_load(&m->owner) != me) {
+        return -1;
+    }
+
+    atomic_store(&m->owner, 0);
+
+    if (timeout_ms < 0) {
+        pthread_cond_wait(&c->condition, &m->mutex);
+    } else {
+        struct timespec until;
+
+        clock_gettime(CLOCK_MONOTONIC, &until);
+        until.tv_sec += timeout_ms / 1000;
+        until.tv_nsec += (long)(timeout_ms % 1000) * 1000000L;
+
+        if (until.tv_nsec >= 1000000000L) {
+            until.tv_sec += 1;
+            until.tv_nsec -= 1000000000L;
+        }
+
+        result = pthread_cond_timedwait(&c->condition, &m->mutex, &until);
+    }
+
+    atomic_store(&m->owner, me);
+    return result == ETIMEDOUT ? 0 : 1;
+}
+
+void $ghul_host_condition_signal(void *signalled) {
+    condition *c = signalled;
+
+    pthread_cond_signal(&c->condition);
+}
+
+void $ghul_host_condition_broadcast(void *signalled) {
+    condition *c = signalled;
+
+    pthread_cond_broadcast(&c->condition);
 }

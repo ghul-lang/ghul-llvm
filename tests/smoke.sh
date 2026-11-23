@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector idle-collection scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer sweep sweep-exit sweep-unhandled threads mutex static-init thread-overflow; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector idle-collection scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer sweep sweep-exit sweep-unhandled threads mutex condition static-init thread-overflow; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -449,6 +449,12 @@ check "a mutex keeps eight threads' counting exact, and is not reentrant" \
     "${status} $(cat mutex.out)"
 
 status=0
+./condition >condition.out 2>condition.err || status=$?
+check "a condition variable releases its mutex while waiting, wakes on a signal or a broadcast, times out holding it, and refuses a wait without it" \
+    "0 $(printf 'signal woke it\nbroadcast woke all 4\ntimed out still holding it\nwait without it refused')" \
+    "${status} $(cat condition.out)"
+
+status=0
 ./static-init >static-init.out 2>static-init.err || status=$?
 check "a static initialiser runs once, and every thread sees what it stored" \
     "0 $(printf '      8 saw 42')" "${status} $(head -n 8 static-init.out | sort | uniq -c)"
@@ -512,7 +518,7 @@ cmp -s hello-dynamic hello-dynamic-again && pass "dynamic builds are determinist
 # libghul's programs behave the same linked either way: output, math,
 # exceptions, null references, big integers, the collector and an
 # unhandled exception's report.
-for program in output scalars exceptions null bigint collector characters unhandled threads mutex; do
+for program in output scalars exceptions null bigint collector characters unhandled threads mutex condition; do
     expect_status 0 "links ${program} dynamically with libghul" \
         "${tool}" --dynamic "${libghul_tests}/${program}.ll" support.o -o "${program}-dynamic"
 
