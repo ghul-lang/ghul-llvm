@@ -17,7 +17,7 @@ ghul-llvm [options] program.ll -L <library dir> -l<library> -o program
 4. Links it with LLD, statically, against the libraries it is given and
    what ships with the tool: libghul (`libghul.a`), ghūl's native support
    library; libtommath (`libtommath.a`) for large bigints; the Boehm garbage
-   collector (`libgc.a`, or `libgc-parallel.a` with `--parallel-gc`); LLVM's unwinder
+   collector, built to mark with several threads (`libgc-parallel.a`); LLVM's unwinder
    (`libunwind.a`); musl's start files and C library; and LLVM's compiler-rt
    builtins. Nothing is read from the system it runs on.
 
@@ -37,7 +37,7 @@ and shared libraries instead (below).
 | `--cpu=<cpu>` | the CPU to generate code for; `x86-64-v3` (AVX2, 2013 and later) by default |
 | `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`, or with `--dynamic` the shared library `lib<name>.so`) |
 | `--sysroot=<dir>` | where the C runtime is; by default `lib/<triple>` beside `bin/` |
-| `--parallel-gc` | link the collector that marks with several threads (below) |
+| `--parallel-gc` | accepted, and does nothing: every static link has the collector that marks with several threads (below) |
 | `--dynamic` | link dynamically against the system's glibc and shared libraries (below) |
 | `--find-library=<name>` | print the shared library `--dynamic` links for `-l<name>`, and exit |
 | `-v` | print the linker command line |
@@ -48,15 +48,21 @@ Objects (`.o`) and archives (`.a`) named on the command line are linked as
 they are. Exit status is 0 on success, 1 when the input could not be built,
 and 2 for a usage error.
 
-`--parallel-gc` links `libgc-parallel.a`, the collector built with marker
-threads, in place of the single-threaded `libgc.a`. The program starts the
-markers when it starts: as many as there are processors, up to four, or
-`GC_MARKERS` of them where that is set. It is for programs that keep a large
-heap: on the ghūl compiler's own build, with about 500 MB live, a full mark
-falls from about 350 ms to about 150 ms with four markers. It is not for
-general programs yet. A small one starts with about 7 MB resident rather
-than under 1 MB, and one that allocates a lot of short-lived objects ran
-about 50% slower.
+The collector is built for threads and marks with several. The program
+starts the markers when it starts: as many as there are processors, up to
+four, or `GC_MARKERS` of them where that is set. Against the single-threaded
+build it was measured (Boehm GC 8.2.12, x86_64) as:
+
+| Program | single-threaded | with markers |
+|---|---|---|
+| hello world | 0.00 s, 392 KB resident | 0.00 s, 400 KB |
+| a word-list program (25,000 strings) | 0.06 s, 10.4 MB | 0.05 s, 11.1 MB |
+| 1,000,000 bigints kept live | 2.50 s, 411 MB | 2.04 s, 432 MB |
+| the ghūl compiler type-checking itself | 11.9 s, 1049 MB | 10.1 s, 1096 MB |
+
+Many programs at once are no slower either: the ghūl compiler's llvm
+integration tests, 377 programs built and run 36 at a time on 24 processors,
+took the same wall time (49.3 s against 49.7 s) with either collector.
 
 ## Linking dynamically
 
@@ -96,7 +102,8 @@ The code is generated for the gnu environment, still for a fixed load address,
 and a program built this way needs glibc 2.35 or later, the build
 environment's, and the libraries it was linked against. It runs on machines
 like the one it was built on, where a statically linked program runs anywhere.
-`--parallel-gc` is not available with `--dynamic` yet.
+A dynamically linked program has the single-threaded collector (`libgc.a`),
+and `--parallel-gc` is refused with `--dynamic`.
 
 ## Releases
 
@@ -113,7 +120,7 @@ The archive unpacks to a single directory:
 ```
 ghul-llvm-x86_64-unknown-linux-musl/
   bin/ghul-llvm
-  lib/x86_64-unknown-linux-musl/   libghul.a libtommath.a libgc.a libunwind.a crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
+  lib/x86_64-unknown-linux-musl/   libghul.a libtommath.a libgc-parallel.a libunwind.a crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
   lib/x86_64-unknown-linux-gnu/    libghul.a libtommath.a libgc.a libunwind.a libbacktrace.a libclang_rt.builtins.a ghul-start.o ghul.ld
   licenses/
 ```

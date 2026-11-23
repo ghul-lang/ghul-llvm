@@ -60,7 +60,6 @@ unwind_flags=(
     -O2
     -fPIC
     -funwind-tables
-    -D_LIBUNWIND_HAS_NO_THREADS
     -D_LIBUNWIND_IS_NATIVE_ONLY
     -D_GNU_SOURCE
 )

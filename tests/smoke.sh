@@ -280,9 +280,9 @@ status=0
 (ulimit -v 1048576 && ./collector) || status=$?
 check "the collector reclaims garbage and keeps what is reachable" 0 "${status}"
 
-# The same under the collector that marks with several threads, which starts
-# them as the program starts: one fewer than the markers, so none where
-# GC_MARKERS is 1.
+# The collector marks with several threads, which it starts as the program
+# starts: one fewer than the markers, so none where GC_MARKERS is 1.
+# --parallel-gc is still accepted, and links the same collector.
 expect_status 0 "links collector with --parallel-gc" \
     "${tool}" --parallel-gc "${libghul_tests}/collector.ll" support.o -o collector-parallel
 status=0
@@ -304,7 +304,8 @@ check "the parallel collector starts three markers beside the program where GC_M
     "$(threads_of env GC_MARKERS=4 ./characters-parallel)"
 check "the parallel collector starts no markers where GC_MARKERS is 1" 1 \
     "$(threads_of env GC_MARKERS=1 ./characters-parallel)"
-check "the single-threaded collector starts none" 1 "$(threads_of ./characters)"
+check "a link without --parallel-gc has the same collector" 4 \
+    "$(threads_of env GC_MARKERS=4 ./characters)"
 
 # An idle collection runs to the end while standard input has nothing to
 # read, and gives up when it has.

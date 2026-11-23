@@ -45,16 +45,15 @@ if [ ! -f "${musl_prefix}/.complete" ]; then
     touch "${musl_prefix}/.complete"
 fi
 
-# The collector, twice: single-threaded, since a ghūl program is, and with
-# marker threads (libgc-parallel.a, chosen by ghul-llvm --parallel-gc), for
-# programs with a large heap that are worth the cost of the threads. Both
-# without the Java and C++ support the library also offers.
+# The collector, built for threads and with marker threads
+# (libgc-parallel.a), which every program links: it was no slower than the
+# single-threaded build on any program measured, and faster on large heaps.
+# Without the Java and C++ support the library also offers.
 archive="$(fetch "${BDWGC_URL}" "${BDWGC_SHA256}")"
 build="${work}/gc-${BDWGC_VERSION}"
 staging="${work}/gc-${BDWGC_VERSION}-install"
-parallel_staging="${work}/gc-${BDWGC_VERSION}-parallel-install"
 
-rm -rf "${build}" "${staging}" "${parallel_staging}" "${sysroot}"
+rm -rf "${build}" "${staging}" "${sysroot}"
 mkdir -p "${sysroot}"
 
 # build_collector <prefix> <configure options...>
@@ -82,13 +81,12 @@ build_collector() {
     )
 }
 
-build_collector "${parallel_staging}" --enable-threads=posix --enable-parallel-mark --enable-thread-local-alloc
-build_collector "${staging}" --disable-threads --disable-parallel-mark
+build_collector "${staging}" --enable-threads=posix --enable-parallel-mark --enable-thread-local-alloc
 
 # libunwind, compiled directly rather than through LLVM's runtimes build:
 # its sources need only C headers, which musl supplies, and the build
-# defines nothing beyond what is spelt out here. Single-threaded, as the
-# collector is.
+# defines nothing beyond what is spelt out here. Thread-safe: its FDE cache
+# is guarded by a pthread rwlock, which static musl supplies.
 source_archive="$(fetch "${LLVM_SOURCE_URL}" "${LLVM_SOURCE_SHA256}")"
 unwind_build="${work}/libunwind-${LLVM_VERSION}"
 unwind_source="${unwind_build}/llvm-project-${LLVM_VERSION}.src/libunwind"
@@ -105,7 +103,6 @@ unwind_flags=(
     -O2
     -fno-pie
     -funwind-tables
-    -D_LIBUNWIND_HAS_NO_THREADS
     -D_LIBUNWIND_IS_NATIVE_ONLY
     -D_GNU_SOURCE
 )
@@ -195,11 +192,10 @@ for file in crt1.o crti.o crtn.o libc.a; do
 done
 
 cp "${llvm_prefix}/${LLVM_BUILTINS}" "${sysroot}/libclang_rt.builtins.a"
-cp "${staging}/lib/libgc.a" "${sysroot}/libgc.a"
-cp "${parallel_staging}/lib/libgc.a" "${sysroot}/libgc-parallel.a"
+cp "${staging}/lib/libgc.a" "${sysroot}/libgc-parallel.a"
 cp -r "${staging}/include/." "${sysroot}/include/"
 cp "${musl_prefix}/COPYRIGHT" "${sysroot}/musl-COPYRIGHT"
 cp "${build}/README.QUICK" "${sysroot}/bdwgc-README.QUICK"
 
-rm -rf "${build}" "${staging}" "${parallel_staging}"
+rm -rf "${build}" "${staging}"
 touch "${sysroot}/.complete"
