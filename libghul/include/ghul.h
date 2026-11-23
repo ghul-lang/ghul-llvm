@@ -312,6 +312,21 @@ bool $ghul_host_mutex_lock(void *mutex);
 bool $ghul_host_mutex_try_lock(void *mutex);
 bool $ghul_host_mutex_unlock(void *mutex);
 
+/*
+ * Condition variables, waited on with a mutex the calling thread holds.
+ * condition_new answers a handle in the collected heap. condition_wait
+ * releases the mutex, waits until the condition is signalled or
+ * timeout_ms milliseconds pass (a negative timeout waits indefinitely),
+ * and takes the mutex again. It answers 1 where it was woken, which may
+ * be without a signal, 0 where the timeout passed, and -1 at once where
+ * the calling thread does not hold the mutex. condition_signal wakes one
+ * waiting thread, and condition_broadcast wakes them all.
+ */
+void *$ghul_host_condition_new(void);
+int32_t $ghul_host_condition_wait(void *condition, void *mutex, int64_t timeout_ms);
+void $ghul_host_condition_signal(void *condition);
+void $ghul_host_condition_broadcast(void *condition);
+
 /* Milliseconds since 1970-01-01T00:00:00Z, from the system clock. */
 double $ghul_host_wall_clock_milliseconds(void);
 

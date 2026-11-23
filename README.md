@@ -400,6 +400,10 @@ A host operation's C signature follows from its declaration:
 | `host.mutex_lock` | `bool (void *)` | waits for it; false at once where the calling thread already holds it |
 | `host.mutex_try_lock` | `bool (void *)` | takes it only where nobody holds it |
 | `host.mutex_unlock` | `bool (void *)` | false where the calling thread does not hold it |
+| `host.condition_new` | `void *(void)` | a condition variable: a handle in the collected heap |
+| `host.condition_wait` | `int32_t (void *, void *, int64_t)` | releases the mutex, waits for a signal or the timeout in milliseconds (negative: no timeout), and takes the mutex again; 1 woken (possibly without a signal), 0 timed out, -1 at once where the calling thread does not hold the mutex |
+| `host.condition_signal` | `void (void *)` | wakes one waiting thread |
+| `host.condition_broadcast` | `void (void *)` | wakes every waiting thread |
 | `host.wall_clock_milliseconds` | `double (void)` | since 1970-01-01T00:00:00Z |
 | `host.exit` | `void (int32_t)` | ends the process with that status, after flushing standard output |
 | `host.process_path` | `void *(void)` | the running executable, from `/proc/self/exe`; `NULL` where it cannot be read |

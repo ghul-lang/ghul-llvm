@@ -1,5 +1,5 @@
 /*
- * Threads, mutexes and a per-thread slot for the program's own state.
+ * Starting and joining threads.
  *
  * Every thread is started through the collector, so its stack and registers
  * are scanned. The collector does not scan thread-local storage, so anything
@@ -19,26 +19,6 @@
    nothing and answers nothing. A program that starts no thread need not
    define it. */
 extern void $ghul_thread_entry(void *action) __attribute__((weak));
-
-/* --- The per-thread slot -------------------------------------------------- */
-
-static _Thread_local void **slot;
-
-void *$ghul_host_thread_state(void) {
-    return slot ? *slot : NULL;
-}
-
-void $ghul_host_thread_set_state(void *state) {
-    if (!slot) {
-        slot = GC_MALLOC_UNCOLLECTABLE(sizeof(void *));
-
-        if (!slot) {
-            $libghul_fail("Out of memory.\n");
-        }
-    }
-
-    *slot = state;
-}
 
 /* --- Starting and joining ------------------------------------------------- */
 
@@ -74,10 +54,7 @@ static void *run(void *argument) {
     $libghul_files_thread_exit();
     $libghul_spawn_thread_exit();
 
-    if (slot) {
-        GC_FREE(slot);
-        slot = NULL;
-    }
+    $libghul_thread_slot_end();
 
     $libghul_signal_stack_end(signal_stack);
     return NULL;
@@ -117,63 +94,4 @@ void *$ghul_host_thread_start(void *action, int64_t stack_size) {
 
 void $ghul_host_thread_join(void *thread) {
     GC_pthread_join(((handle *)thread)->thread, NULL);
-}
-
-/* --- Mutexes -------------------------------------------------------------- */
-
-typedef struct {
-    pthread_mutex_t mutex;
-
-    /* The thread holding it, or 0. */
-    atomic_llong owner;
-} mutex;
-
-void *$ghul_host_mutex_new(void) {
-    /* Nothing in a mutex points into the heap. */
-    mutex *made = GC_MALLOC_ATOMIC(sizeof(mutex));
-
-    if (!made) {
-        $libghul_fail("Out of memory.\n");
-    }
-
-    pthread_mutex_init(&made->mutex, NULL);
-    atomic_init(&made->owner, 0);
-    return made;
-}
-
-bool $ghul_host_mutex_lock(void *locked) {
-    mutex *m = locked;
-    int64_t me = $ghul_host_thread_id();
-
-    if (atomic_load(&m->owner) == me) {
-        return false;
-    }
-
-    pthread_mutex_lock(&m->mutex);
-    atomic_store(&m->owner, me);
-    return true;
-}
-
-bool $ghul_host_mutex_try_lock(void *locked) {
-    mutex *m = locked;
-    int64_t me = $ghul_host_thread_id();
-
-    if (atomic_load(&m->owner) == me || pthread_mutex_trylock(&m->mutex) != 0) {
-        return false;
-    }
-
-    atomic_store(&m->owner, me);
-    return true;
-}
-
-bool $ghul_host_mutex_unlock(void *locked) {
-    mutex *m = locked;
-
-    if (atomic_load(&m->owner) != $ghul_host_thread_id()) {
-        return false;
-    }
-
-    atomic_store(&m->owner, 0);
-    pthread_mutex_unlock(&m->mutex);
-    return true;
 }

@@ -131,4 +131,14 @@ if [ "${status}" -ne 5 ]; then
     exit 1
 fi
 
+"${tool}" --emit=cell "${tests}/cell-sync.ll" -o "${scratch}/sync.so"
+
+status=0
+"${host}" "${scratch}/sync.so" || status=$?
+
+if [ "${status}" -ne 7 ]; then
+    echo "FAILED: a cell using the per-thread slot, a mutex and a condition variable exited ${status}, expected 7" >&2
+    exit 1
+fi
+
 echo "ok: a cell is loaded and run by the host"
