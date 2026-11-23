@@ -24,7 +24,9 @@
 
 #include "internal.h"
 
+#include <errno.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <ucontext.h>
@@ -181,6 +183,10 @@ static void write_text(const char *text) {
     while (length > 0) {
         ssize_t written = write(2, text, length);
 
+        if (written < 0 && errno == EINTR) {
+            continue;
+        }
+
         if (written <= 0) {
             return;
         }
@@ -216,15 +222,25 @@ static void write_address(uintptr_t address) {
 #define OVERFLOW_REACH (1024 * 1024)
 
 static void report(int signal, uintptr_t address, uintptr_t sp, void *context) {
-    static volatile sig_atomic_t reporting;
+    static atomic_int reporting;
+    static _Thread_local int reporting_here;
 
-    if (reporting) {
+    /* One report: a fault on another thread while it is written waits for
+       the report to end the process, and one in the report itself passes
+       the signal on. */
+    if (atomic_exchange(&reporting, 1)) {
+        if (!reporting_here) {
+            for (;;) {
+                pause();
+            }
+        }
+
         return;
     }
 
-    reporting = 1;
+    reporting_here = 1;
 
-    $libghul_flush_output();
+    $libghul_flush_output_if_free();
 
     if (signal == SIGSEGV && address <= sp + 4096 && address + OVERFLOW_REACH >= sp) {
         write_text("Stack overflow.\n");

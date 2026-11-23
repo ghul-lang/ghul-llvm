@@ -2,7 +2,9 @@
 
 #include "internal.h"
 
+#include <errno.h>
 #include <gc.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -16,15 +18,14 @@ const int32_t $ghul_abi_4 = GHUL_ABI_VERSION;
 extern void $ghul_exit_sweep(void) __attribute__((weak));
 
 void $libghul_exit_sweep(void) {
-    static int swept;
+    static atomic_int swept;
 
-    /* Once: the sweep can end in an exception nothing catches, whose path
-       out sweeps too. */
-    if (swept || !$ghul_exit_sweep) {
+    /* Once, whichever thread ends the program: the sweep can end in an
+       exception nothing catches, whose path out sweeps too. */
+    if (!$ghul_exit_sweep || atomic_exchange(&swept, 1)) {
         return;
     }
 
-    swept = 1;
     $ghul_exit_sweep();
 }
 
@@ -54,6 +55,7 @@ int main(int argc, char **argv) {
     start_collector();
 
     $libghul_fault_init();
+    $libghul_output_init();
     $libghul_clock_init();
     $libghul_arguments_init(argc, argv);
     $libghul_environment_init(environ);
@@ -74,6 +76,10 @@ _Noreturn void $libghul_fail(const char *message) {
 
     while (length > 0) {
         ssize_t written = write(2, message, length);
+
+        if (written < 0 && errno == EINTR) {
+            continue;
+        }
 
         if (written <= 0) {
             break;

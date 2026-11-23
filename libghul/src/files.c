@@ -27,7 +27,8 @@ enum {
     IO_ERROR = 4,
 };
 
-static int32_t last_error;
+/* Per thread, as errno is. */
+static _Thread_local int32_t last_error;
 
 int32_t $ghul_host_file_last_error(void) {
     return last_error;
@@ -448,8 +449,10 @@ int32_t $ghul_host_directory_set_current(const uint16_t *chars, int32_t length) 
 
 /* --- Listing ------------------------------------------------------------ */
 
-static char **entries;
-static int32_t entry_count;
+/* Per thread, so each thread lists its own directory. The names are malloc
+   memory, not the collector's. */
+static _Thread_local char **entries;
+static _Thread_local int32_t entry_count;
 
 static int by_name(const void *a, const void *b) {
     return strcmp(*(char *const *)a, *(char *const *)b);

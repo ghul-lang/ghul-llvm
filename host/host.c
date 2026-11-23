@@ -41,7 +41,7 @@
 
 extern char **environ;
 
-extern void *$libghul_unhandled_jump;
+extern _Thread_local void *$libghul_unhandled_jump;
 
 static int32_t (*cell_entry)(void);
 static void *(*cell_make_string)(const uint16_t *, int32_t);
@@ -220,6 +220,7 @@ int main(int argc, char **argv) {
     sigaction(SIGINT, &action, NULL);
 
     $libghul_fault_init();
+    $libghul_output_init();
     $libghul_clock_init();
     /* The entry before the first argument stands for the program name. */
     $libghul_arguments_init(argc - first_argument + 1, argv + first_argument - 1);

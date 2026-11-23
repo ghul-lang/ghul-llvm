@@ -16,7 +16,9 @@
 #include "internal.h"
 
 #include <backtrace.h>
+#include <errno.h>
 #include <libunwind.h>
+#include <pthread.h>
 #include <string.h>
 #include <ucontext.h>
 #include <unistd.h>
@@ -29,6 +31,12 @@ static struct backtrace_state *state;
 static void write_error(const char *text, size_t length) {
     while (length > 0) {
         ssize_t written = write(2, text, length);
+
+        /* The collector stops other threads with signals, which can
+           interrupt a write. */
+        if (written < 0 && errno == EINTR) {
+            continue;
+        }
 
         if (written <= 0) {
             return;
@@ -131,10 +139,13 @@ static int is_outermost(const char *name) {
  * address; every later frame's is a return address, so the address one
  * before it is the call.
  */
+static void create_state(void) {
+    state = backtrace_create_state(NULL, 1, ignore_error, NULL);
+}
+
 static void write_frames(unw_cursor_t *cursor, int exact) {
-    if (!state) {
-        state = backtrace_create_state(NULL, 0, ignore_error, NULL);
-    }
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    pthread_once(&once, create_state);
 
     int named = 0;
     uintptr_t more = 0;

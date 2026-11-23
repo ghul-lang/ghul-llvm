@@ -8,6 +8,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <gc.h>
 #include <poll.h>
 #include <spawn.h>
 #include <stdlib.h>
@@ -17,15 +18,35 @@
 
 extern char **environ;
 
-/* The command being built: the program, then its arguments. */
-static char **command;
-static int command_count;
-static int command_capacity;
+/* The command being built: the program, then its arguments, per thread,
+   in malloc memory. */
+static _Thread_local char **command;
+static _Thread_local int command_count;
+static _Thread_local int command_capacity;
 
-/* What the last run captured, and why it could not start if it could not. */
-static void *captured_output;
-static void *captured_error;
-static int32_t last_failure;
+/* Why the last run could not start, if it could not. */
+static _Thread_local int32_t last_failure;
+
+/*
+ * What the thread's last run captured, as two strings. The collector does
+ * not scan a thread's thread-local storage, so the strings are held in a
+ * block it does scan.
+ */
+enum { OUTPUT, ERROR };
+
+static _Thread_local void **captured;
+
+static void **captures(void) {
+    if (!captured) {
+        captured = GC_MALLOC_UNCOLLECTABLE(2 * sizeof(void *));
+
+        if (!captured) {
+            $libghul_fail("Out of memory.\n");
+        }
+    }
+
+    return captured;
+}
 
 static char *utf8_text(const uint16_t *chars, int32_t length) {
     char *text = malloc((size_t)length * 3 + 4);
@@ -114,8 +135,8 @@ int32_t $ghul_host_process_run(void) {
     buffer out = {0};
     buffer err = {0};
 
-    captured_output = NULL;
-    captured_error = NULL;
+    captures()[OUTPUT] = NULL;
+    captures()[ERROR] = NULL;
     last_failure = 0;
 
     if (command_count == 0) {
@@ -199,8 +220,8 @@ int32_t $ghul_host_process_run(void) {
     while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
     }
 
-    captured_output = string_from(&out);
-    captured_error = string_from(&err);
+    captures()[OUTPUT] = string_from(&out);
+    captures()[ERROR] = string_from(&err);
 
     /* A child ended by a signal reports 128 plus the signal, as .NET does. */
     if (WIFSIGNALED(status)) {
@@ -215,9 +236,9 @@ int32_t $ghul_host_process_failure(void) {
 }
 
 void *$ghul_host_process_output(void) {
-    return captured_output;
+    return captures()[OUTPUT];
 }
 
 void *$ghul_host_process_error(void) {
-    return captured_error;
+    return captures()[ERROR];
 }
