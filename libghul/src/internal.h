@@ -38,6 +38,9 @@ int64_t $libghul_next_thread_id(void);
 
 /* Free what a thread kept for itself, as it ends. */
 void $libghul_files_thread_exit(void);
+
+/* Frees the calling thread's slot for the program's state, as it ends. */
+void $libghul_thread_slot_end(void);
 void $libghul_spawn_thread_exit(void);
 
 /* Calls the program's $ghul_exit_sweep, where it defines one, once. */

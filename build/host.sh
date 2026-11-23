@@ -137,7 +137,9 @@ objects=()
 
 for source in "${root}"/libghul/src/*.c; do
     # A cell starts no threads, and the host's collector is single-threaded;
-    # static_init.c, which every cell calls, is built.
+    # static_init.c, which every cell calls, and sync.c, whose per-thread
+    # slot, mutexes and condition variables the core library uses whether or
+    # not a program starts threads, are built.
     if [ "$(basename "${source}")" = thread.c ]; then
         continue
     fi
