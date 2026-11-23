@@ -31,6 +31,9 @@ flags=(
     -ffunction-sections
     -fdata-sections
     -funwind-tables
+    # So that a cleanup runs when an exception unwinds through C, as one
+    # thrown by a static initialiser does through $ghul_static_init.
+    -fexceptions
     -I "${root}/libghul/include"
     -I "${sysroot}/include"
 )

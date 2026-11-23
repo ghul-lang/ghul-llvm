@@ -85,6 +85,15 @@ void $ghul_report_unhandled(void *exception);
 void $ghul_exit_sweep(void);
 
 /*
+ * Calls `action`, a function value that takes nothing and answers
+ * nothing, on a thread $ghul_host_thread_start started, which ends when it
+ * returns. An exception it lets escape is unhandled, as on the main thread,
+ * so the program's own thread type catches everything first. A program that
+ * starts no thread need not define it.
+ */
+void $ghul_thread_entry(void *action);
+
+/*
  * Makes the exception a read through null throws. libghul calls it when a read
  * through null faults, and throws what it answers, so the program raises the
  * same exception it throws for null anywhere else. A program that does
@@ -132,6 +141,18 @@ int32_t $ghul_identity_hash(const void *object);
  * started the collection.
  */
 void $ghul_register_finalizer(void *object, void (*finalizer)(void *object));
+
+/*
+ * Runs `initialise` once, however many threads reach it, for the static
+ * initialiser whose guard is `*flag`. The guard is 0 before it starts and 2
+ * once it has finished, which the program tests inline with an acquire load
+ * before calling this: only a first use, or a use while another thread is
+ * still initialising, comes here. A thread that arrives while another runs
+ * the initialiser waits for it to finish; the thread running it returns at
+ * once, so the initialiser can use its own type. Where the initialiser
+ * throws, the guard goes back to 0, so a later use runs it again.
+ */
+void $ghul_static_init(int32_t *flag, void (*initialise)(void));
 
 /* --- Exceptions --------------------------------------------------------- */
 
@@ -258,6 +279,38 @@ int32_t $ghul_host_process_run(void);
 int32_t $ghul_host_process_failure(void);
 void *$ghul_host_process_output(void);
 void *$ghul_host_process_error(void);
+
+/*
+ * Threads. thread_start runs `action` through $ghul_thread_entry on a new
+ * thread with a stack of `stack_size` bytes (8 MB where it is zero or less),
+ * and answers a handle for thread_join, or NULL where no thread could be
+ * started. The handle is in the collected heap, so the program keeps it in
+ * an object the collector scans. thread_join waits for the thread to end.
+ * thread_id answers the calling thread's number: 1 for the main thread, and
+ * one more for each thread started after it.
+ */
+void *$ghul_host_thread_start(void *action, int64_t stack_size);
+void $ghul_host_thread_join(void *thread);
+int64_t $ghul_host_thread_id(void);
+
+/*
+ * One value per thread, which the collector keeps alive while the thread
+ * runs: NULL until the thread sets it.
+ */
+void *$ghul_host_thread_state(void);
+void $ghul_host_thread_set_state(void *state);
+
+/*
+ * Mutexes, which are not reentrant. mutex_new answers a handle in the
+ * collected heap. mutex_lock waits for the mutex and answers true, or
+ * answers false at once where the calling thread already holds it.
+ * mutex_try_lock takes it only where no thread holds it. mutex_unlock
+ * releases it, or answers false where the calling thread does not hold it.
+ */
+void *$ghul_host_mutex_new(void);
+bool $ghul_host_mutex_lock(void *mutex);
+bool $ghul_host_mutex_try_lock(void *mutex);
+bool $ghul_host_mutex_unlock(void *mutex);
 
 /* Milliseconds since 1970-01-01T00:00:00Z, from the system clock. */
 double $ghul_host_wall_clock_milliseconds(void);

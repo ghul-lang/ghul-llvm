@@ -464,13 +464,22 @@ static int by_name(const void *a, const void *b) {
  * are, or the negated code of a failure. Names are sorted by their UTF-8
  * bytes, so a listing is the same from one run to the next.
  */
-int32_t $ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool directories) {
+static void free_entries(void) {
     for (int32_t i = 0; i < entry_count; i++) {
         free(entries[i]);
     }
 
     free(entries);
     entries = NULL;
+    entry_count = 0;
+}
+
+void $libghul_files_thread_exit(void) {
+    free_entries();
+}
+
+int32_t $ghul_host_directory_entries(const uint16_t *chars, int32_t length, bool directories) {
+    free_entries();
     entry_count = 0;
 
     char *path = utf8_path(chars, length);

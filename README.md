@@ -37,7 +37,7 @@ and shared libraries instead (below).
 | `--cpu=<cpu>` | the CPU to generate code for; `x86-64-v3` (AVX2, 2013 and later) by default |
 | `-L <dir>`, `-l <name>` | where to look for libraries, and which to link (`lib<name>.a`, or with `--dynamic` the shared library `lib<name>.so`) |
 | `--sysroot=<dir>` | where the C runtime is; by default `lib/<triple>` beside `bin/` |
-| `--parallel-gc` | accepted, and does nothing: every static link has the collector that marks with several threads (below) |
+| `--parallel-gc` | accepted, and does nothing: every link has the collector that marks with several threads (below) |
 | `--dynamic` | link dynamically against the system's glibc and shared libraries (below) |
 | `--find-library=<name>` | print the shared library `--dynamic` links for `-l<name>`, and exit |
 | `-v` | print the linker command line |
@@ -102,8 +102,7 @@ The code is generated for the gnu environment, still for a fixed load address,
 and a program built this way needs glibc 2.35 or later, the build
 environment's, and the libraries it was linked against. It runs on machines
 like the one it was built on, where a statically linked program runs anywhere.
-A dynamically linked program has the single-threaded collector (`libgc.a`),
-and `--parallel-gc` is refused with `--dynamic`.
+A dynamically linked program has the same collector, built against glibc.
 
 ## Releases
 
@@ -121,7 +120,7 @@ The archive unpacks to a single directory:
 ghul-llvm-x86_64-unknown-linux-musl/
   bin/ghul-llvm
   lib/x86_64-unknown-linux-musl/   libghul.a libtommath.a libgc-parallel.a libunwind.a crt1.o crti.o crtn.o libc.a libclang_rt.builtins.a
-  lib/x86_64-unknown-linux-gnu/    libghul.a libtommath.a libgc.a libunwind.a libbacktrace.a libclang_rt.builtins.a ghul-start.o ghul.ld
+  lib/x86_64-unknown-linux-gnu/    libghul.a libtommath.a libgc-parallel.a libunwind.a libbacktrace.a libclang_rt.builtins.a ghul-start.o ghul.ld
   licenses/
 ```
 
@@ -207,6 +206,7 @@ string objects when libghul asks.
 | `void *$ghul_make_bytes(const uint8_t *bytes, int32_t length)` | builds one of the program's `ubyte[]` arrays; the bytes are valid only during the call |
 | `void $ghul_report_unhandled(void *exception)` | writes `Unhandled exception. <Type>: <message>` and a newline to stream 2 through `$ghul_host_write`; needed by a program that throws |
 | `void *$ghul_make_null_reference(void)` | the exception a read through null throws; a program that does not define it ends with SIGSEGV on one, as without libghul |
+| `void $ghul_thread_entry(void *action)` | calls `action`, a function value taking and answering nothing, on a thread `host.thread_start` started; an exception it lets escape is unhandled, so the program's thread type catches first; needed by a program that starts a thread |
 | `void $ghul_exit_sweep(void)` | flushes and closes what the core library still holds open; called once as the program ends: on return from `$ghul_entry`, on exit, and after an unhandled exception is reported, before standard output is flushed; a program that keeps no such state need not define it |
 
 ### What libghul provides
@@ -242,6 +242,13 @@ string objects when libghul asks.
   (below).
 - `void *$ghul_caught(void *header)`: the exception a landing pad was entered
   for.
+- `void $ghul_static_init(int32_t *flag, void (*initialise)(void))`: runs a
+  static initialiser once across threads. Its guard is 0 before it starts and
+  2 once it has finished, which the program tests inline with an acquire load,
+  calling this only otherwise. Another thread arriving waits for the
+  initialiser to finish; the thread running it returns at once, so the
+  initialiser can use its own type; one that throws leaves the guard at 0,
+  so a later use runs it again.
 - `$ghul_personality`: the personality routine, which only the unwinder
   calls.
 - One `ghul_host_<name>` function for each operation the core library declares
@@ -355,6 +362,7 @@ A host operation's C signature follows from its declaration:
 | `string?` result | the same, or `NULL` when absent |
 | `ubyte[]` argument | two parameters: `const uint8_t *bytes, int32_t length` |
 | `ubyte[]` result | `void *`, made by `$ghul_make_bytes`, or `NULL` when absent |
+| an object argument or result, such as a function value or a handle | `void *` |
 | `bigint` argument or result | `void *`: a handle libghul makes and never changes, in the collected heap; a handle the program keeps must be in an object the collector scans |
 
 | operation | C signature | notes |
@@ -384,6 +392,14 @@ A host operation's C signature follows from its declaration:
 | `host.process_run` | `int32_t (void)` | runs the command to completion, standard input shared, standard output and error captured; the exit status, 128 plus the signal for one that was killed, or -1 where it could not start |
 | `host.process_failure` | `int32_t (void)` | why the last run could not start: 0 it did, 1 the program was not found, 2 anything else |
 | `host.process_output`, `host.process_error` | `void *(void)` | what the last run wrote to standard output and standard error |
+| `host.thread_start` | `void *(void *action, int64_t stack_size)` | runs `action` through `$ghul_thread_entry` on a new thread, with an 8 MB stack where the size is zero or less; a handle in the collected heap, or `NULL` where no thread could start |
+| `host.thread_join` | `void (void *thread)` | waits for the thread to end |
+| `host.thread_id` | `int64_t (void)` | 1 for the main thread, one more for each thread started after it |
+| `host.thread_state`, `host.thread_set_state` | `void *(void)`, `void (void *)` | one value per thread, kept alive while the thread runs; `NULL` until set |
+| `host.mutex_new` | `void *(void)` | a mutex, which is not reentrant: a handle in the collected heap |
+| `host.mutex_lock` | `bool (void *)` | waits for it; false at once where the calling thread already holds it |
+| `host.mutex_try_lock` | `bool (void *)` | takes it only where nobody holds it |
+| `host.mutex_unlock` | `bool (void *)` | false where the calling thread does not hold it |
 | `host.wall_clock_milliseconds` | `double (void)` | since 1970-01-01T00:00:00Z |
 | `host.exit` | `void (int32_t)` | ends the process with that status, after flushing standard output |
 | `host.process_path` | `void *(void)` | the running executable, from `/proc/self/exe`; `NULL` where it cannot be read |

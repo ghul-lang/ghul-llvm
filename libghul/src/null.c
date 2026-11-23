@@ -324,18 +324,37 @@ static void on_fault(int signal, siginfo_t *info, void *context) {
 #endif
 }
 
-void $libghul_fault_init(void) {
+void *$libghul_signal_stack_start(void) {
     void *signal_stack = mmap(NULL, SIGNAL_STACK_SIZE, PROT_READ | PROT_WRITE,
                               MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
 
+    if (signal_stack == MAP_FAILED) {
+        return NULL;
+    }
+
+    stack_t alternate = {.ss_sp = signal_stack, .ss_size = SIGNAL_STACK_SIZE};
+
+    if (sigaltstack(&alternate, NULL) != 0) {
+        munmap(signal_stack, SIGNAL_STACK_SIZE);
+        return NULL;
+    }
+
+    return signal_stack;
+}
+
+void $libghul_signal_stack_end(void *signal_stack) {
+    if (signal_stack) {
+        stack_t none = {.ss_flags = SS_DISABLE};
+        sigaltstack(&none, NULL);
+        munmap(signal_stack, SIGNAL_STACK_SIZE);
+    }
+}
+
+void $libghul_fault_init(void) {
     int flags = SA_SIGINFO;
 
-    if (signal_stack != MAP_FAILED) {
-        stack_t alternate = {.ss_sp = signal_stack, .ss_size = SIGNAL_STACK_SIZE};
-
-        if (sigaltstack(&alternate, NULL) == 0) {
-            flags |= SA_ONSTACK;
-        }
+    if ($libghul_signal_stack_start()) {
+        flags |= SA_ONSTACK;
     }
 
     for (size_t i = 0; i < sizeof fatal_signals / sizeof fatal_signals[0]; i++) {

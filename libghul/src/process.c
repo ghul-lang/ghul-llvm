@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/random.h>
@@ -17,7 +18,27 @@
 static int argument_count;
 static char **arguments;
 
+/* The main thread is 1, and each thread started after it the next number. */
+static atomic_llong next_thread_id = 2;
+_Thread_local int64_t $libghul_thread_id;
+
+int64_t $libghul_next_thread_id(void) {
+    return atomic_fetch_add(&next_thread_id, 1);
+}
+
+int64_t $ghul_host_thread_id(void) {
+    if (!$libghul_thread_id) {
+        /* A thread the program did not start, such as a collector marker. */
+        $libghul_thread_id = $libghul_next_thread_id();
+    }
+
+    return $libghul_thread_id;
+}
+
 void $libghul_arguments_init(int argc, char **argv) {
+    /* Called once, by main, on the main thread. */
+    $libghul_thread_id = 1;
+
     /* The program's own name is not one of its arguments. */
     argument_count = argc > 0 ? argc - 1 : 0;
     arguments = argc > 0 ? argv + 1 : argv;

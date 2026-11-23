@@ -227,7 +227,7 @@ bool link(const Options &options, llvm::StringRef object, const char *argv0) {
 bool link_dynamic(const Options &options, llvm::StringRef object, const char *argv0) {
     std::string sysroot = options.sysroot ? *options.sysroot : default_sysroot(argv0, true);
 
-    const char *needed[] = {"ghul-start.o", "libghul.a", "ghul.ld", "libtommath.a", "libgc.a",
+    const char *needed[] = {"ghul-start.o", "libghul.a", "ghul.ld", "libtommath.a", "libgc-parallel.a",
                             "libbacktrace.a", "libunwind.a", "libclang_rt.builtins.a"};
 
     if (!check_sysroot(sysroot, needed)) {
@@ -312,7 +312,7 @@ bool link_dynamic(const Options &options, llvm::StringRef object, const char *ar
     args.push_back("--start-group");
     args.push_back(in_sysroot("libghul.a"));
     args.push_back(in_sysroot("libtommath.a"));
-    args.push_back(in_sysroot("libgc.a"));
+    args.push_back(in_sysroot("libgc-parallel.a"));
     args.push_back(in_sysroot("libbacktrace.a"));
     args.push_back(in_sysroot("libunwind.a"));
     args.push_back(in_sysroot("libclang_rt.builtins.a"));

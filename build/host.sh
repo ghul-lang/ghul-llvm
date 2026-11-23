@@ -127,6 +127,7 @@ flags=(
     -ffunction-sections
     -fdata-sections
     -funwind-tables
+    -fexceptions
     -I "${root}/libghul/include"
     -I "${root}/libghul/src"
     -I "${prefix}/include"
@@ -135,6 +136,12 @@ flags=(
 objects=()
 
 for source in "${root}"/libghul/src/*.c; do
+    # A cell starts no threads, and the host's collector is single-threaded;
+    # static_init.c, which every cell calls, is built.
+    if [ "$(basename "${source}")" = thread.c ]; then
+        continue
+    fi
+
     object="${build}/$(basename "${source}" .c).o"
     extra=()
 

@@ -180,7 +180,7 @@ libghul_tests="${tests}/libghul"
 expect_status 0 "builds the libghul tests' support object" \
     "${tool}" --emit=obj "${libghul_tests}/support.ll" -o support.o
 
-for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector idle-collection scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer sweep sweep-exit sweep-unhandled; do
+for program in output process process-path spawn spawn-missing clone identity-hash-spread memory heap lines flush pending pending-long-line characters collector idle-collection scalars unhandled exit exceptions escaped bigint bigint-churn bigint-negative-exponent files listing null null-wild null-unhandled overflow finalizer sweep sweep-exit sweep-unhandled threads mutex static-init thread-overflow; do
     expect_status 0 "links ${program} with libghul" \
         "${tool}" "${libghul_tests}/${program}.ll" support.o -o "${program}"
 done
@@ -433,6 +433,35 @@ check "a fault away from null is reported, with the frame it happened in" \
     "$(printf 'Fatal error. SIGSEGV: invalid memory access at address 0x10000000000\n   at $ghul_entry')" \
     "$(head -n 2 null-wild.err)"
 
+# Threads: the collector and the unwinder with eight threads running, a
+# mutex, a static initialiser reached by eight at once, and a stack running
+# out on a thread rather than the main one.
+status=0
+./threads >threads.out 2>threads.err || status=$?
+check "threads allocate, collect, throw and catch together, and are joined" \
+    "0 $(printf '      1 joined\n      8 worker ok')" "${status} $(sort threads.out | uniq -c)"
+check "joined comes after every worker" "joined" "$(tail -n 1 threads.out)"
+
+status=0
+./mutex >mutex.out 2>mutex.err || status=$?
+check "a mutex keeps eight threads' counting exact, and is not reentrant" \
+    "0 $(printf 'count right\nsecond lock refused: 1\nunlocking a free one: 0\ntry_lock when free: 1\ntry_lock when held: 0')" \
+    "${status} $(cat mutex.out)"
+
+status=0
+./static-init >static-init.out 2>static-init.err || status=$?
+check "a static initialiser runs once, and every thread sees what it stored" \
+    "0 $(printf '      8 saw 42')" "${status} $(head -n 8 static-init.out | sort | uniq -c)"
+check "one that throws runs again on the next use" \
+    "$(printf 'ran once\ncaught\nran again')" "$(tail -n 3 static-init.out)"
+
+status=0
+sh -c './thread-overflow 2>thread-overflow.err; exit $?' 2>/dev/null || status=$?
+check "a thread's stack running out ends the process with the signal" 139 "${status}"
+check "a thread's stack running out is reported, with the frames" \
+    "$(printf 'Stack overflow.\n   at Test.deep\n   at Test.deep')" \
+    "$(head -n 3 thread-overflow.err)"
+
 status=0
 sh -c './overflow >overflow.out 2>overflow.err; exit $?' 2>/dev/null || status=$?
 check "a stack that runs out ends the process with the signal" 139 "${status}"
@@ -483,7 +512,7 @@ cmp -s hello-dynamic hello-dynamic-again && pass "dynamic builds are determinist
 # libghul's programs behave the same linked either way: output, math,
 # exceptions, null references, big integers, the collector and an
 # unhandled exception's report.
-for program in output scalars exceptions null bigint collector unhandled; do
+for program in output scalars exceptions null bigint collector characters unhandled threads mutex; do
     expect_status 0 "links ${program} dynamically with libghul" \
         "${tool}" --dynamic "${libghul_tests}/${program}.ll" support.o -o "${program}-dynamic"
 
@@ -551,8 +580,12 @@ else
     echo "skipped: no linker on this machine to build a shared library with"
 fi
 
-expect_status 2 "refuses --dynamic with --parallel-gc" \
-    "${tool}" --dynamic --parallel-gc "${tests}/hello.ll" -o nothing
+expect_status 0 "accepts --parallel-gc with --dynamic" \
+    "${tool}" --dynamic --parallel-gc "${tests}/hello.ll" -o hello-dynamic-parallel
+cmp -s hello-dynamic hello-dynamic-parallel && pass "--parallel-gc changes nothing about a dynamic link" ||
+    fail "--parallel-gc changed a dynamic link"
+check "a dynamically linked program has the collector's markers" 4 \
+    "$(threads_of env GC_MARKERS=4 ./characters-dynamic)"
 
 glibc="$(objdump -T "${tool}" | grep -oE 'GLIBC_[0-9.]+' | sort -V -u | tail -n 1)"
 echo "ghul-llvm needs ${glibc} or later"

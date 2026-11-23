@@ -3,7 +3,7 @@
 # itself: musl's start files and static C library, LLVM's
 # compiler-rt builtins for the helper routines code generation can call
 # (128-bit division, for instance), the Boehm garbage collector, built
-# single-threaded against musl, LLVM's libunwind, which exceptions are
+# with marker threads against musl, LLVM's libunwind, which exceptions are
 # thrown through, libtommath, which large bigints are computed with, and
 # libbacktrace, which names the frames of a crash report. This is what ships
 # in the release archive's lib/<triple> directory beside libghul.a.

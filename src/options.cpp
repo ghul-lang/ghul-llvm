@@ -48,8 +48,8 @@ constexpr const char *usage_text =
     "                        shared library lib<name>.so\n"
     "  --sysroot=<dir>       where the C runtime is (default: lib/" GHUL_LLVM_TRIPLE "\n"
     "                        beside the directory ghul-llvm is in)\n"
-    "  --parallel-gc         accepted, and does nothing: a static link always\n"
-    "                        has the collector that marks with several threads\n"
+    "  --parallel-gc         accepted, and does nothing: every link has the\n"
+    "                        collector that marks with several threads\n"
     "  --dynamic             link dynamically against the system's glibc and\n"
     "                        shared libraries (see README.md)\n"
     "  --find-library=<name> print the shared library --dynamic links for\n"
@@ -223,11 +223,6 @@ Parsed parse_options(int argc, char **argv) {
 
     if (options.dynamic && options.emit != Emit::Executable) {
         parsed.exit_status = usage_error("--dynamic only applies to linking an executable");
-        return parsed;
-    }
-
-    if (options.dynamic && options.parallel_gc) {
-        parsed.exit_status = usage_error("--parallel-gc is not available with --dynamic");
         return parsed;
     }
 

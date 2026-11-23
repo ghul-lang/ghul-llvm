@@ -242,3 +242,15 @@ void *$ghul_host_process_output(void) {
 void *$ghul_host_process_error(void) {
     return captures()[ERROR];
 }
+
+void $libghul_spawn_thread_exit(void) {
+    clear_command();
+    free(command);
+    command = NULL;
+    command_capacity = 0;
+
+    if (captured) {
+        GC_FREE(captured);
+        captured = NULL;
+    }
+}

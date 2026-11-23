@@ -73,9 +73,9 @@ LIBTOMMATH_VERSION=1.3.0
 LIBTOMMATH_SHA256=296272d93435991308eb73607600c034b558807a07e829e751142e65ccfa9d08
 LIBTOMMATH_URL=https://github.com/libtom/libtommath/releases/download/v${LIBTOMMATH_VERSION}/ltm-${LIBTOMMATH_VERSION}.tar.xz
 
-# The garbage collector libghul allocates from: built with marker threads
-# against musl and shipped as libgc-parallel.a, and single-threaded against
-# glibc for --dynamic, shipped as libgc.a.
+# The garbage collector libghul allocates from, built with marker threads
+# and shipped as libgc-parallel.a, against musl and against glibc for
+# --dynamic. The cell host builds its own, single-threaded.
 BDWGC_VERSION=8.2.12
 BDWGC_SHA256=42e5194ad06ab6ffb806c83eb99c03462b495d979cda782f3c72c08af833cd4e
 BDWGC_URL=https://github.com/ivmai/bdwgc/releases/download/v${BDWGC_VERSION}/gc-${BDWGC_VERSION}.tar.gz

@@ -43,8 +43,8 @@ struct Options {
     std::vector<std::string> library_paths;
     std::vector<std::string> libraries;
 
-    // Asked for the collector built with marker threads. A static link
-    // always has it, so this only refuses --dynamic, which does not.
+    // Asked for the collector built with marker threads, which every link
+    // has, so it changes nothing.
     bool parallel_gc = false;
 
     // Link dynamically against the system's glibc and its shared libraries,
