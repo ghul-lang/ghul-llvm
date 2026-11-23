@@ -121,4 +121,14 @@ if [ "$(cat "${scratch}/interrupted")" != "${expected}" ]; then
     exit 1
 fi
 
+"${tool}" --emit=cell "${tests}/cell-static.ll" -o "${scratch}/static.so"
+
+status=0
+"${host}" "${scratch}/static.so" || status=$?
+
+if [ "${status}" -ne 5 ]; then
+    echo "FAILED: a cell's static initialiser exited ${status}, expected 5" >&2
+    exit 1
+fi
+
 echo "ok: a cell is loaded and run by the host"
