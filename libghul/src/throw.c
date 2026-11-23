@@ -24,7 +24,7 @@
  * it around each, so one that fails leaves the others' state in place.
  * Null ends the process, as it does for a program that is one piece.
  */
-void *$libghul_unhandled_jump;
+_Thread_local void *$libghul_unhandled_jump;
 
 /* "GHUL" as the vendor and "GHUL" as the language, as the protocol asks. */
 #define EXCEPTION_CLASS 0x4748554C4748554CULL

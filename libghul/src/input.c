@@ -2,6 +2,8 @@
  * Standard input, read as the program asks for it, decoded from UTF-8 into
  * UTF-16 code units. Lines end at \n, \r\n or \r, as .NET's ReadLine ends
  * them.
+ *
+ * Threads share the input under one lock, held for the whole of each call.
  */
 
 #include "internal.h"
@@ -9,10 +11,13 @@
 #include <errno.h>
 #include <gc.h>
 #include <poll.h>
+#include <pthread.h>
 #include <time.h>
 #include <unistd.h>
 
 #define READ_SIZE 4096
+
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* The longest UTF-8 sequence, which is never split between decodes. */
 #define MAX_SEQUENCE 4
@@ -130,15 +135,15 @@ static int32_t answer(int32_t unit) {
     return unit;
 }
 
-int32_t $ghul_host_stdin_peek(void) {
+static int32_t stdin_peek(void) {
     return answer(peek_unit());
 }
 
-int32_t $ghul_host_stdin_read(void) {
+static int32_t stdin_read(void) {
     return answer(read_unit());
 }
 
-void *$ghul_host_stdin_read_line(void) {
+static void *stdin_read_line(void) {
     $libghul_utf16 line = {0};
 
     int32_t unit = read_unit();
@@ -160,7 +165,7 @@ void *$ghul_host_stdin_read_line(void) {
     return $libghul_utf16_make_string(&line);
 }
 
-void *$ghul_host_stdin_read_to_end(void) {
+static void *stdin_read_to_end(void) {
     $libghul_utf16 rest = {0};
 
     for (int32_t unit = read_unit(); unit >= 0; unit = read_unit()) {
@@ -263,7 +268,7 @@ static int64_t now_ms(void) {
     return (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
 }
 
-bool $ghul_host_stdin_pending(void) {
+static bool stdin_pending(void) {
     /* What was written before asking is seen by whoever is to answer. */
     $libghul_flush_output();
 
@@ -274,7 +279,7 @@ bool $ghul_host_stdin_pending(void) {
     return ready();
 }
 
-bool $ghul_host_stdin_wait(int32_t timeout_ms) {
+static bool stdin_wait(int32_t timeout_ms) {
     /* A prompt written without a newline is seen before the wait. */
     $libghul_flush_output();
 
@@ -305,10 +310,27 @@ bool $ghul_host_stdin_wait(int32_t timeout_ms) {
     }
 }
 
+#define LOCKED(type, call) \
+    pthread_mutex_lock(&lock); \
+    type result = call; \
+    pthread_mutex_unlock(&lock); \
+    return result;
+
+int32_t $ghul_host_stdin_peek(void) { LOCKED(int32_t, stdin_peek()) }
+int32_t $ghul_host_stdin_read(void) { LOCKED(int32_t, stdin_read()) }
+void *$ghul_host_stdin_read_line(void) { LOCKED(void *, stdin_read_line()) }
+void *$ghul_host_stdin_read_to_end(void) { LOCKED(void *, stdin_read_to_end()) }
+bool $ghul_host_stdin_pending(void) { LOCKED(bool, stdin_pending()) }
+bool $ghul_host_stdin_wait(int32_t timeout_ms) { LOCKED(bool, stdin_wait(timeout_ms)) }
+
 /*
  * Whether input is waiting to be read: a whole line decoded, the input
  * ended, or bytes readable on the descriptor. Polled at most once every 64
  * calls, since the collector asks between every few pages it marks.
+ *
+ * The collector asks with every other thread stopped, so one may be
+ * stopped part way through a read, holding the lock. Then only the
+ * descriptor is asked, and the decoded input is left alone.
  */
 static int stop_for_input(void) {
     static unsigned calls;
@@ -317,7 +339,13 @@ static int stop_for_input(void) {
         return 0;
     }
 
-    return ready() || at_end || readable(0);
+    if (pthread_mutex_trylock(&lock) != 0) {
+        return readable(0);
+    }
+
+    int stop = ready() || at_end || readable(0);
+    pthread_mutex_unlock(&lock);
+    return stop;
 }
 
 /* The allocation since the last collection below which an idle collection
