@@ -3,8 +3,8 @@
  * C library's static part, libc_nonshared.a, in a program a C compiler
  * links: that archive is in the C library's development package, which a
  * dynamic link does not need. Of what it holds on glibc 2.34 and later,
- * libghul calls only atexit; at_quick_exit is here beside it for a program
- * that declares it with @extern.
+ * libghul calls atexit and the collector pthread_atfork; at_quick_exit is
+ * here beside them for a program that declares it with @extern.
  */
 
 /* The handle that ties functions registered with atexit to this executable:
@@ -23,6 +23,7 @@ const int _IO_stdin_used __attribute__((used, retain)) = 0x20001;
 
 int __cxa_atexit(void (*function)(void *), void *argument, void *handle);
 int __cxa_at_quick_exit(void (*function)(void *), void *handle);
+int __register_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void), void *handle);
 
 int atexit(void (*function)(void)) {
     return __cxa_atexit((void (*)(void *))function, 0, __dso_handle);
@@ -30,4 +31,8 @@ int atexit(void (*function)(void)) {
 
 int at_quick_exit(void (*function)(void)) {
     return __cxa_at_quick_exit((void (*)(void *))function, __dso_handle);
+}
+
+int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void)) {
+    return __register_atfork(prepare, parent, child, __dso_handle);
 }

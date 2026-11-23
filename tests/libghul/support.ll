@@ -138,3 +138,11 @@ write:
   call void @$ghul_host_write(ptr %wide, i32 %length, i32 1)
   ret void
 }
+
+; Runs a thread's action: here, an object whose first word is the function
+; to call, which is handed the object itself.
+define void @$ghul_thread_entry(ptr %action) {
+  %function = load ptr, ptr %action
+  call void %function(ptr %action)
+  ret void
+}

@@ -27,6 +27,19 @@ void $libghul_flush_output(void);
  * which may have interrupted a write on its own thread. */
 void $libghul_flush_output_if_free(void);
 
+/* Gives the calling thread its own stack for signal handlers, so a stack
+ * overflow can be reported; answers it, or NULL where it could not. */
+void *$libghul_signal_stack_start(void);
+void $libghul_signal_stack_end(void *signal_stack);
+
+/* The calling thread's id, 0 until it is given one, and the next id to give. */
+extern _Thread_local int64_t $libghul_thread_id;
+int64_t $libghul_next_thread_id(void);
+
+/* Free what a thread kept for itself, as it ends. */
+void $libghul_files_thread_exit(void);
+void $libghul_spawn_thread_exit(void);
+
 /* Calls the program's $ghul_exit_sweep, where it defines one, once. */
 void $libghul_exit_sweep(void);
 

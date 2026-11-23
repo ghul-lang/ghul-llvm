@@ -2,7 +2,7 @@
 # Builds the C runtime for a program ghul-llvm links dynamically against the
 # system's glibc (ghul-llvm --dynamic), into out/lib/<arch>-unknown-linux-gnu/:
 #
-#   libghul.a libtommath.a libgc.a libbacktrace.a libunwind.a
+#   libghul.a libtommath.a libgc-parallel.a libbacktrace.a libunwind.a
 #   libclang_rt.builtins.a ghul.ld ghul-start.o
 #
 # Each is built with the build environment's gcc against its glibc, so a
@@ -35,6 +35,7 @@ common_flags=(
     -ffunction-sections
     -fdata-sections
     -funwind-tables
+    -fexceptions
 )
 
 # Ubuntu's gcc marks x86-64 code for control-flow protection by default,
@@ -55,9 +56,10 @@ if [ ! -f "${gnu_sysroot}/.complete" ]; then
         tar -xf "${archive}" -C "${directory}" --strip-components=1
     }
 
-    # The collector, single-threaded as for the static build. Built for a
-    # dynamically linked program, it finds the data segments of the shared
-    # libraries the program loads, so their globals are roots.
+    # The collector, built for threads and with marker threads, as for the
+    # static build. Built for a dynamically linked program, it finds the data
+    # segments of the shared libraries the program loads, so their globals
+    # are roots.
     unpack "$(fetch "${BDWGC_URL}" "${BDWGC_SHA256}")" "${build}/gc"
     (
         cd "${build}/gc"
@@ -65,8 +67,9 @@ if [ ! -f "${gnu_sysroot}/.complete" ]; then
             --prefix="${build}/gc-install" \
             --disable-shared \
             --enable-static \
-            --disable-threads \
-            --disable-parallel-mark \
+            --enable-threads=posix \
+            --enable-parallel-mark \
+            --enable-thread-local-alloc \
             --disable-gcj-support \
             --disable-java-finalization \
             --disable-docs \
@@ -75,7 +78,7 @@ if [ ! -f "${gnu_sysroot}/.complete" ]; then
         make -j "${jobs}" >/dev/null
         make install >/dev/null
     )
-    cp "${build}/gc-install/lib/libgc.a" "${gnu_sysroot}/"
+    cp "${build}/gc-install/lib/libgc.a" "${gnu_sysroot}/libgc-parallel.a"
     cp -r "${build}/gc-install/include/." "${gnu_sysroot}/include/"
 
     # The unwinder, from LLVM's source, as for the static build.
@@ -180,8 +183,12 @@ gcc "${flags[@]}" -fno-function-sections -fno-data-sections -c "${root}/libghul/
 ld -r "${build}/start.o" "${build}/runtime.o" -o "${target}/ghul-start.o"
 
 # Nothing may refer to the parts of glibc that only its development package
-# installs, or to a fortified function.
-if nm -u "${target}"/*.a "${target}/ghul-start.o" 2>/dev/null | grep -E ' (__stack_chk_fail_local|__[a-z_]+_chk|pthread_atfork)$'; then
+# installs, or to a fortified function, except what ghul-start.o defines in
+# their place.
+provided="$(nm --defined-only "${target}/ghul-start.o" | awk '{print $3}')"
+
+if nm -u "${target}"/*.a "${target}/ghul-start.o" 2>/dev/null | awk '{print $2}' |
+    grep -E '^(__stack_chk_fail_local|__[a-z_]+_chk|pthread_atfork)$' | grep -vxF "${provided}"; then
     echo "the gnu runtime refers to libc_nonshared.a or a fortified function" >&2
     exit 1
 fi
