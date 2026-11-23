@@ -45,18 +45,15 @@ if [ ! -f "${musl_prefix}/.complete" ]; then
     touch "${musl_prefix}/.complete"
 fi
 
-# The collector, three times: single-threaded (libgc.a); thread-aware, for
-# programs that start threads, without marker threads (libgc-threads.a); and
-# with marker threads too (libgc-parallel.a, chosen by ghul-llvm
-# --parallel-gc), for programs with a large heap that are worth the cost of
-# the markers. All without the Java and C++ support the library also offers.
+# The collector, built for threads and with marker threads
+# (libgc-parallel.a), which every program links: it was no slower than the
+# single-threaded build on any program measured, and faster on large heaps.
+# Without the Java and C++ support the library also offers.
 archive="$(fetch "${BDWGC_URL}" "${BDWGC_SHA256}")"
 build="${work}/gc-${BDWGC_VERSION}"
 staging="${work}/gc-${BDWGC_VERSION}-install"
-parallel_staging="${work}/gc-${BDWGC_VERSION}-parallel-install"
-threads_staging="${work}/gc-${BDWGC_VERSION}-threads-install"
 
-rm -rf "${build}" "${staging}" "${parallel_staging}" "${threads_staging}" "${sysroot}"
+rm -rf "${build}" "${staging}" "${sysroot}"
 mkdir -p "${sysroot}"
 
 # build_collector <prefix> <configure options...>
@@ -84,9 +81,7 @@ build_collector() {
     )
 }
 
-build_collector "${parallel_staging}" --enable-threads=posix --enable-parallel-mark --enable-thread-local-alloc
-build_collector "${threads_staging}" --enable-threads=posix --disable-parallel-mark --enable-thread-local-alloc
-build_collector "${staging}" --disable-threads --disable-parallel-mark
+build_collector "${staging}" --enable-threads=posix --enable-parallel-mark --enable-thread-local-alloc
 
 # libunwind, compiled directly rather than through LLVM's runtimes build:
 # its sources need only C headers, which musl supplies, and the build
@@ -197,12 +192,10 @@ for file in crt1.o crti.o crtn.o libc.a; do
 done
 
 cp "${llvm_prefix}/${LLVM_BUILTINS}" "${sysroot}/libclang_rt.builtins.a"
-cp "${staging}/lib/libgc.a" "${sysroot}/libgc.a"
-cp "${parallel_staging}/lib/libgc.a" "${sysroot}/libgc-parallel.a"
-cp "${threads_staging}/lib/libgc.a" "${sysroot}/libgc-threads.a"
+cp "${staging}/lib/libgc.a" "${sysroot}/libgc-parallel.a"
 cp -r "${staging}/include/." "${sysroot}/include/"
 cp "${musl_prefix}/COPYRIGHT" "${sysroot}/musl-COPYRIGHT"
 cp "${build}/README.QUICK" "${sysroot}/bdwgc-README.QUICK"
 
-rm -rf "${build}" "${staging}" "${parallel_staging}" "${threads_staging}"
+rm -rf "${build}" "${staging}"
 touch "${sysroot}/.complete"

@@ -154,7 +154,7 @@ bool run_lld(const Options &options, const std::vector<std::string> &args) {
 bool link(const Options &options, llvm::StringRef object, const char *argv0) {
     std::string sysroot = options.sysroot ? *options.sysroot : default_sysroot(argv0, false);
 
-    const char *collector = options.parallel_gc ? "libgc-parallel.a" : "libgc.a";
+    const char *collector = "libgc-parallel.a";
     const char *needed[] = {"crt1.o",  "crti.o", "crtn.o",
                              "libghul.a", "ghul.ld", "libtommath.a", collector, "libbacktrace.a", "libunwind.a", "libc.a",
                              "libclang_rt.builtins.a"};
